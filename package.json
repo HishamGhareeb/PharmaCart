@@ -1,0 +1,38 @@
+{
+  "name": "pharmacart",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "engines": {
+    "node": "24.19.0"
+  },
+  "packageManager": "npm@11.17.0",
+  "scripts": {
+    "test": "node --experimental-strip-types --test packages/contracts/test/*.test.ts packages/test-fixtures/test/*.test.ts packages/domain/test/*.test.ts",
+    "test:coverage": "node --experimental-strip-types --experimental-test-coverage --test-coverage-exclude=**/test/** --test-coverage-lines=80 --test-coverage-functions=80 --test-coverage-branches=80 --test packages/contracts/test/*.test.ts packages/test-fixtures/test/*.test.ts packages/domain/test/*.test.ts",
+    "db:up": "docker compose -p pharmacart -f infra/compose.yaml up -d --wait",
+    "db:stop": "docker compose -p pharmacart -f infra/compose.yaml stop",
+    "db:status": "docker compose -p pharmacart -f infra/compose.yaml ps",
+    "typecheck": "tsc --noEmit",
+    "lint": "eslint .",
+    "contracts:generate": "node packages/contracts/scripts/generate-contracts.ts",
+    "contracts:verify": "node packages/contracts/scripts/verify-contracts.ts",
+    "db:migrate": "node packages/db/scripts/postgres.mjs pharmacart",
+    "test:integration": "node --test packages/db/test/*.test.mjs"
+  },
+  "devDependencies": {
+    "@types/node": "24.10.1",
+    "@types/oidc-provider": "9.12.1",
+    "@types/pg": "8.23.1",
+    "ajv": "8.20.0",
+    "eslint": "10.10.0",
+    "typescript": "5.9.3",
+    "typescript-eslint": "8.70.0"
+  },
+  "dependencies": {
+    "fastify": "5.12.4",
+    "jose": "6.2.12",
+    "oidc-provider": "9.12.2",
+    "pg": "8.23.0"
+  }
+}

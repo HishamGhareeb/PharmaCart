@@ -1,0 +1,35 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://pharmacart.local/schemas/submit-result.schema.json",
+  "title": "SubmitResult",
+  "oneOf": [
+    {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["kind", "externalOrderId"],
+      "properties": {
+        "kind": { "const": "accepted" },
+        "externalOrderId": { "type": "string", "minLength": 1, "maxLength": 256 }
+      }
+    },
+    {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["kind", "code", "message"],
+      "properties": {
+        "kind": { "const": "rejected" },
+        "code": { "type": "string", "minLength": 1, "maxLength": 128 },
+        "message": { "type": "string", "minLength": 1, "maxLength": 1024 }
+      }
+    },
+    {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["kind", "reconciliationRef"],
+      "properties": {
+        "kind": { "const": "unknown" },
+        "reconciliationRef": { "type": "string", "minLength": 1, "maxLength": 256 }
+      }
+    }
+  ]
+}

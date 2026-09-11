@@ -1,0 +1,20 @@
+services:
+  postgres:
+    image: postgres@sha256:2203e6282d9e7de7c24d7da234e2a744fb325df366a3fd8ed940e8abbee39527
+    pull_policy: never
+    environment:
+      POSTGRES_DB: pharmacart
+      POSTGRES_USER: pharmacart_bootstrap
+      POSTGRES_PASSWORD: ${PHARMACART_DB_PASSWORD:?Set PHARMACART_DB_PASSWORD in infra/.env}
+    ports:
+      - "127.0.0.1:55432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U pharmacart_bootstrap -d pharmacart"]
+      start_period: 120s
+      interval: 2s
+      timeout: 5s
+      retries: 20
+volumes:
+  postgres_data:
