@@ -29,6 +29,19 @@ export async function ingestInventory(pool: Pool, subject: string, command: Inve
       for(const row of Object.values(result.state.projections[installation.id]??{})) {
         await client.query('INSERT INTO inventory_projection(installation_id,organisation_id,branch_id,source_code,quantity,unit,stale,snapshot_id,sequence) VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9)',[...scope,row.sourceCode,row.quantity,row.unit,row.stale,row.snapshotId,row.sequence]);
       }
+      if(result.state.projectionRevision>state.projectionRevision) {
+        await client.query(`INSERT INTO need(organisation_id,branch_id,product_ref,requested_quantity,source_ref)
+          SELECT t.organisation_id,t.branch_id,t.product_ref,t.target_quantity-p.quantity,t.installation_id::text || ':' || t.source_code
+          FROM inventory_target t JOIN inventory_projection p USING(installation_id,source_code)
+          WHERE t.installation_id=$1 AND NOT p.stale AND p.unit=t.unit AND p.quantity<t.target_quantity
+          ON CONFLICT(organisation_id,source_ref) DO UPDATE SET requested_quantity=EXCLUDED.requested_quantity,version=need.version+1
+          WHERE need.status='open' AND need.requested_quantity<>EXCLUDED.requested_quantity`,[installation.id]);
+        await client.query(`INSERT INTO inventory_alert(organisation_id,branch_id,source_ref)
+          SELECT t.organisation_id,t.branch_id,t.installation_id::text || ':' || t.source_code
+          FROM inventory_target t JOIN inventory_projection p USING(installation_id,source_code)
+          WHERE t.installation_id=$1 AND NOT p.stale AND p.unit=t.unit AND p.quantity<t.target_quantity
+          ON CONFLICT(organisation_id,source_ref) DO NOTHING`,[installation.id]);
+      }
     }
     await client.query('COMMIT');
     return {eventId:command.eventId,status:'processed',duplicate:result.kind==='duplicate',projectionRevision:result.state.projectionRevision};

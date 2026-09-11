@@ -11,6 +11,8 @@ test('AC-003/004: authenticated durable replay and incomplete snapshots preserve
   const pool = await resetDatabase(); const identity = await localIdentity();
   await sql(`INSERT INTO connector_installation(id,organisation_id,branch_id,user_subject,status)
     VALUES ('${ids.installation}','${ids.a}','${ids.branchA}','synthetic:connector:a','active')`);
+  await sql(`INSERT INTO inventory_target(installation_id,organisation_id,branch_id,source_code,product_ref,unit,target_quantity)
+    VALUES('${ids.installation}','${ids.a}','${ids.branchA}','00017','SYN-INVENTORY-PACK','box',10)`);
   const verifier = createAccessTokenVerifier({ issuer: identity.issuer, audience: 'pharmacart-api', jwksUri: `${identity.issuer}/jwks` });
   let app = buildTenantApi(pool, verifier);
   try {
@@ -25,8 +27,9 @@ test('AC-003/004: authenticated durable replay and incomplete snapshots preserve
     assert(replay.every(r => r.statusCode === 202));
     assert.equal((await sql('SELECT count(*) FROM inventory_inbox')).trim(), '2');
     assert.equal((await sql('SELECT revision FROM inventory_state')).trim(), '1');
-    assert.equal((await sql('SELECT count(*) FROM need')).trim(), '2');
-    assert.equal((await sql('SELECT count(*) FROM inventory_alert')).trim(), '0');
+    assert.equal((await sql('SELECT count(*) FROM need')).trim(), '3');
+    assert.equal((await sql('SELECT count(*) FROM inventory_alert')).trim(), '1');
+    assert.equal((await sql("SELECT requested_quantity::text || '|' || version FROM need WHERE product_ref='SYN-INVENTORY-PACK'")).trim(), '2|1');
     assert.equal((await post({ ...part, rows:[{sourceCode:'00017',quantity:'9',unit:'box'}] })).statusCode, 409);
     assert.equal((await post({ ...part, eventId:'event-3', snapshotId:'snap-2', sequence:2, rows:[{sourceCode:'00018',quantity:'4',unit:'box'}] })).statusCode, 202);
     assert.equal((await post({kind:'complete',eventId:'event-4',snapshotId:'snap-2',sequence:2,expectedPartitionIds:['p1','p2']})).statusCode, 202);
