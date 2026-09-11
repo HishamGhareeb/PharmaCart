@@ -10,9 +10,17 @@ export type ErrorCode =
 
 type ErrorDefinition = Readonly<{
   statusCode: number;
-  code: ErrorCode;
+  code: string;
   message: string;
 }>;
+
+export class ApiError extends Error {
+  readonly statusCode: number;
+  readonly code: string;
+  constructor(statusCode: number, code: string, message: string) {
+    super(message); this.statusCode = statusCode; this.code = code;
+  }
+}
 
 const INTERNAL_ERROR: ErrorDefinition = {
   statusCode: 500,
@@ -21,6 +29,7 @@ const INTERNAL_ERROR: ErrorDefinition = {
 };
 
 function classifyError(error: FastifyError): ErrorDefinition {
+  if (error instanceof ApiError) return { statusCode: error.statusCode, code: error.code, message: error.message };
   if (error.code === 'FST_ERR_CTP_INVALID_JSON_BODY') {
     return {
       statusCode: 400,

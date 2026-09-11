@@ -28,7 +28,7 @@ export async function createLocalOidcProvider(options: { issuer?: string; enviro
         } },
     },
     findAccount: (_ctx, subject) => {
-      if (!['synthetic:user:a', 'synthetic:user:b'].includes(subject)) return undefined;
+      if (!['synthetic:user:a', 'synthetic:user:b', 'synthetic:connector:a'].includes(subject)) return undefined;
       return { accountId: subject, claims: () => ({ sub: subject }) };
     },
   });
