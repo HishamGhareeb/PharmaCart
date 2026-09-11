@@ -6,6 +6,8 @@ import { buildApp } from './app.ts';
 import { ApiError } from './errors.ts';
 import { ingestInventory, InventoryError, type InventoryCommand } from '../../../packages/db/src/inventory.ts';
 import { inventoryCommandSchema } from '../../../packages/contracts/src/inventory-schema.ts';
+import { quoteCommandSchema } from '../../../packages/contracts/src/quote-schema.ts';
+import { createQuote, approveQuote, ProcurementError, type QuoteCommand } from '../../../packages/db/src/procurement.ts';
 
 export type TokenVerifier = { verifyAccessToken(token: string): Promise<VerifiedAccessToken> };
 const uuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/;
@@ -28,10 +30,21 @@ export function buildTenantApi(pool: Pool, verifier: TokenVerifier) {
         selector(request.headers['x-branch-id']), operation);
     } catch (error) {
       if (error instanceof MembershipAccessDeniedError) throw new ApiError(403, 'FORBIDDEN', 'The selected scope is not permitted.');
+      if (error instanceof ProcurementError) throw new ApiError(error.status,error.code,'The purchase request could not be completed.');
       throw error;
     }
   }
   app.get('/v1/context', request => member(request, async (_client, context) => context));
+  app.post<{Body:QuoteCommand}>('/v1/quotes',{schema:{body:quoteCommandSchema}},async(request,reply)=>
+    reply.code(201).send(await member(request,(client,context)=>createQuote(client,context,request.body))));
+  app.post<{Params:{id:string};Body:{quoteVersion:number}}>('/v1/quotes/:id/approve',{schema:{body:{type:'object',additionalProperties:false,required:['quoteVersion'],properties:{quoteVersion:{type:'integer',minimum:1,maximum:Number.MAX_SAFE_INTEGER}}}}},async(request,reply)=>{
+    const result=await member(request,(client,context)=>{
+      const key=request.headers['idempotency-key'];
+      if(typeof key!=='string'||!/^[A-Za-z0-9_-]{1,128}$/.test(key))throw new ApiError(400,'INVALID_REQUEST','A valid idempotency key is required.');
+      return approveQuote(client,context,selector(request.params.id),request.body.quoteVersion,key);
+    });
+    return reply.code(result.status).send(result.body);
+  });
   app.post<{Body:InventoryCommand}>('/v1/inventory',{schema:{body:inventoryCommandSchema}},async(request,reply)=>{
     const identity=await authenticate(request,verifier);
     try { return reply.code(202).send(await ingestInventory(pool,identity.subject,request.body)); }

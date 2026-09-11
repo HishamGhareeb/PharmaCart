@@ -12,7 +12,7 @@ export const ids = {
 export const sql = (text: string) => psql('pharmacart_test', text);
 export async function resetDatabase() {
   await ensureTestDatabase(); await applyMigrations('pharmacart_test');
-  await sql(`TRUNCATE organisation CASCADE;
+  await sql(`TRUNCATE organisation,procurement_product CASCADE;
     INSERT INTO organisation(id,kind,name,verification_status) VALUES
     ('${ids.a}','pharmacy','Synthetic A','verified'),('${ids.b}','pharmacy','Synthetic B','verified'),
     ('${ids.supplier}','supplier','Synthetic Supplier','verified');
