@@ -16,4 +16,6 @@ Verified and pinned on 2026-09-11. This is a tested development baseline, not a 
 
 Node runs erasable TypeScript directly. `tsc --noEmit` supplies independent static validation. The compiler settings follow [TypeScript's erasable syntax documentation](https://www.typescriptlang.org/tsconfig/erasableSyntaxOnly.html).
 
-Fastify, database client, pg-boss, OIDC provider, web/mobile/desktop frameworks and .NET SDK will be selected and pinned when their corresponding implementation begins. No unpinned latest images are used for the database.
+Additional exact pins verified from npm on 2026-09-12: Fastify 5.12.4, jose 6.2.12, oidc-provider 9.12.2, pg 8.23.0, @types/pg 8.23.1 and @types/oidc-provider 9.12.1. Install audit reports zero vulnerabilities. API and OIDC behavior were verified against installed source/types and official [Fastify server documentation](https://fastify.dev/docs/latest/Reference/Server/) and [oidc-provider](https://github.com/panva/node-oidc-provider).
+
+pg-boss, client frameworks and .NET SDK remain pending their implementation stages. No unpinned database images are used.

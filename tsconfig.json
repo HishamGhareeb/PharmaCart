@@ -13,6 +13,6 @@
     "types": ["node"],
     "skipLibCheck": false
   },
-  "include": ["packages/**/*.ts", "apps/**/*.ts"],
+  "include": ["packages/**/*.ts", "apps/**/*.ts", "infra/**/*.ts", "scripts/**/*.ts"],
   "exclude": ["node_modules"]
 }
