@@ -55,6 +55,57 @@ export function multiplyDecimals(left: string, right: string): string | undefine
   return formatExactDecimal({ mantissa: a.mantissa * b.mantissa, scale: a.scale + b.scale });
 }
 
+/**
+ * Division cannot be exact, so the scale is declared by the caller and the
+ * remainder is rounded half away from zero. Nothing here silently truncates a
+ * rate, because a consumption rate rounded down becomes a target that is too
+ * small and a pharmacy that runs out again.
+ */
+export function divideDecimals(left: string, right: string, scale: number): string | undefined {
+  const a = parseExactDecimal(left);
+  const b = parseExactDecimal(right);
+  if (a === undefined || b === undefined || b.mantissa === 0n) {
+    return undefined;
+  }
+  if (!Number.isSafeInteger(scale) || scale < 0 || scale > 32) {
+    return undefined;
+  }
+
+  const numerator = a.mantissa * pow10(b.scale + scale);
+  const denominator = b.mantissa * pow10(a.scale);
+  const negative = (numerator < 0n) !== (denominator < 0n);
+  const magnitude = absolute(numerator);
+  const divisor = absolute(denominator);
+
+  const quotient = magnitude / divisor;
+  const remainder = magnitude % divisor;
+  const rounded = remainder * 2n >= divisor ? quotient + 1n : quotient;
+
+  return formatExactDecimal({ mantissa: negative ? -rounded : rounded, scale });
+}
+
+export function ceilDecimal(value: string): string | undefined {
+  const parsed = parseExactDecimal(value);
+  if (parsed === undefined) {
+    return undefined;
+  }
+  if (parsed.scale === 0) {
+    return formatExactDecimal(parsed);
+  }
+
+  const factor = pow10(parsed.scale);
+  const truncated = parsed.mantissa / factor;
+  const remainder = parsed.mantissa % factor;
+  return formatExactDecimal({
+    mantissa: remainder > 0n ? truncated + 1n : truncated,
+    scale: 0,
+  });
+}
+
+function absolute(value: bigint): bigint {
+  return value < 0n ? -value : value;
+}
+
 function parseExactDecimal(value: string): ExactDecimal | undefined {
   if (typeof value !== 'string' || value.length === 0 || value.length > MAX_DECIMAL_LENGTH) {
     return undefined;

@@ -3,10 +3,65 @@ import { describe, it } from 'node:test';
 
 import {
   addDecimals,
+  ceilDecimal,
   compareDecimals,
+  divideDecimals,
   multiplyDecimals,
   subtractDecimals,
 } from '../src/exact-decimal.ts';
+
+describe('exact decimal division at a declared scale', () => {
+  it('divides to the scale the caller asks for', () => {
+    assert.equal(divideDecimals('10', '4', 2), '2.5');
+    assert.equal(divideDecimals('1', '3', 6), '0.333333');
+    assert.equal(divideDecimals('1', '8', 3), '0.125');
+  });
+
+  it('rounds the remainder half away from zero rather than truncating it', () => {
+    assert.equal(divideDecimals('2', '3', 0), '1');
+    assert.equal(divideDecimals('1', '3', 0), '0');
+    assert.equal(divideDecimals('1', '2', 0), '1');
+    assert.equal(divideDecimals('-1', '2', 0), '-1');
+  });
+
+  it('keeps the sign of the quotient', () => {
+    assert.equal(divideDecimals('-10', '4', 2), '-2.5');
+    assert.equal(divideDecimals('10', '-4', 2), '-2.5');
+    assert.equal(divideDecimals('-10', '-4', 2), '2.5');
+  });
+
+  it('refuses division by zero and anything it cannot read', () => {
+    assert.equal(divideDecimals('1', '0', 2), undefined);
+    assert.equal(divideDecimals('1', '0.0', 2), undefined);
+    assert.equal(divideDecimals('1e3', '2', 2), undefined);
+    assert.equal(divideDecimals('1', '2', -1), undefined);
+    assert.equal(divideDecimals('1', '2', 64), undefined);
+  });
+});
+
+describe('exact decimal ceiling', () => {
+  it('rounds up to a whole unit, because part of a box cannot be ordered', () => {
+    assert.equal(ceilDecimal('3.7'), '4');
+    assert.equal(ceilDecimal('3.0001'), '4');
+    assert.equal(ceilDecimal('0.0001'), '1');
+  });
+
+  it('leaves whole values alone', () => {
+    assert.equal(ceilDecimal('3'), '3');
+    assert.equal(ceilDecimal('3.0'), '3');
+    assert.equal(ceilDecimal('0'), '0');
+  });
+
+  it('rounds towards zero on the negative side, as a ceiling does', () => {
+    assert.equal(ceilDecimal('-3.7'), '-3');
+    assert.equal(ceilDecimal('-0.5'), '0');
+  });
+
+  it('refuses what it cannot read', () => {
+    assert.equal(ceilDecimal('abc'), undefined);
+    assert.equal(ceilDecimal('1e3'), undefined);
+  });
+});
 
 describe('exact decimal addition and subtraction', () => {
   it('adds and subtracts the way arithmetic does, not the way doubles do', () => {
