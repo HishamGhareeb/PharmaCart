@@ -43,3 +43,26 @@ Nothing reads `inventory_target` or writes `need`. The derivation is pure and ta
 What counts as an open commitment is also left to the caller, and the definition matters more than it looks. An order submitted but not acknowledged, an order acknowledged but not delivered, and an order whose outcome is unknown are three different states, and only the last is genuinely ambiguous. Treating an unknown-outcome order as not committed will double-order; treating it as committed will under-order. The order path already models that state, and the caller must decide deliberately rather than by accident.
 
 Finally, coverage targets are taken as given. Nothing here derives a target from consumption history, which is the obvious next thing and a place where a wrong model quietly costs money in both directions.
+
+## 5. Public types, as of the commercial policy hardening
+
+`deriveNeeds` now returns a discriminated union. Ambiguous input is rejected outright rather than resolved, because a source code appearing twice among positions has no single on-hand quantity and silently keeping the last arrival would make the answer depend on row order.
+
+```ts
+type NeedDerivation =
+  | { kind: 'derived'; needs: readonly DerivedNeed[]; withheld: readonly WithheldPosition[] }
+  | { kind: 'rejected'; reason: 'duplicate_target' | 'duplicate_position' | 'duplicate_commitment'; sourceCode: string }
+
+const result = deriveNeeds(targets, positions, commitments)
+if (result.kind === 'rejected') { /* an input defect, not a stock condition */ }
+```
+
+`OpenCommitment` now carries a required `commitmentId`, so two records claiming one identity are rejected while two genuinely distinct orders for the same product still sum:
+
+```ts
+{ commitmentId: 'ord-91', sourceCode: 'SKU-1', quantity: '6', unit: 'box' }
+```
+
+`WithholdingReason` gains `negative_quantity`, raised when a target, an on-hand figure or a commitment is below zero. It stays a withholding rather than a rejection because it spoils one product, not the whole input.
+
+**What counts as an open commitment is still the caller's decision and is deliberately not encoded here.** An order submitted but unacknowledged, one acknowledged but undelivered, and one whose outcome is unknown are three different states. Passing unknown-outcome orders as commitments under-orders; omitting them double-orders. The caller passes the commitments it means.

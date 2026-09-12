@@ -45,3 +45,16 @@ Nothing reads history from the database. The derivation takes observations and r
 The model is deliberately crude. It assumes demand is roughly stationary over the observed window, which is wrong for seasonal products, for a branch that has just opened, and around Ramadan, when Egyptian pharmacy demand shifts in ways a flat average will not see. It has no trend term, no seasonality, and no outlier handling, so one unusual fortnight moves the target and stays in it.
 
 Safety days, lead time and review period are all supplied rather than learned, and lead time in particular is knowable from the order history once orders exist. Until then a wrong lead time silently scales every target.
+
+## 5. Public types, as of the commercial policy hardening
+
+`CoverageRefusalReason` gains `invalid_receipt_time` and `negative_quantity`.
+
+Every observation and every receipt is validated before any interval is used or censored. A receipt whose timestamp cannot be read is now a named refusal rather than a silent skip, and a malformed quantity is caught even when the receipt falls outside every observation window, where the old window filter would have discarded it unread.
+
+```ts
+deriveCoverageTarget('SKU-1', observations, [{ receivedAt: 'not-a-time', quantity: '10', unit: 'box' }], policy)
+// { kind: 'refused', reason: 'invalid_receipt_time' }
+```
+
+The policy is validated as a whole rather than field by field. Each of lead time, review period and safety days must be a non-negative safe integer no greater than 3650, and their sum must also be a positive safe integer no greater than 3650. Two individually valid values that overflow when added are refused as `invalid_policy`.

@@ -42,8 +42,10 @@ export type CoverageRefusalReason =
   | 'invalid_policy'
   | 'insufficient_history'
   | 'unordered_history'
+  | 'invalid_receipt_time'
   | 'unit_mismatch'
   | 'unreadable_amount'
+  | 'negative_quantity'
   | 'negative_consumption'
   | 'all_intervals_censored';
 
@@ -53,6 +55,7 @@ export type CoverageDerivation =
 
 const MILLISECONDS_PER_DAY = 86_400_000;
 const DAY_SCALE = 6;
+const MAX_COVERAGE_DAYS = 3650;
 
 /**
  * A stockout censors demand rather than measuring it. Once the shelf is empty
@@ -61,6 +64,10 @@ const DAY_SCALE = 6;
  * demand and not a reading of it. Averaging those intervals in produces a rate
  * that is too low, a target that is too small, and a shelf that empties again.
  * They are excluded and counted, never quietly included.
+ *
+ * Every observation and every receipt is validated before any interval is used
+ * or censored, so a malformed record cannot disappear merely because it falls
+ * outside the window that would otherwise have read it.
  */
 export function deriveCoverageTarget(
   sourceCode: string,
@@ -82,6 +89,15 @@ export function deriveCoverageTarget(
     return refuse('unit_mismatch');
   }
 
+  const timeline = validatedTimeline(observations);
+  if (typeof timeline === 'string') {
+    return refuse(timeline);
+  }
+  const receiptFault = validateReceipts(receipts);
+  if (receiptFault !== undefined) {
+    return refuse(receiptFault);
+  }
+
   let totalConsumption = '0';
   let totalDays = '0';
   let intervalsUsed = 0;
@@ -90,19 +106,11 @@ export function deriveCoverageTarget(
   for (let index = 1; index < observations.length; index += 1) {
     const previous = observations[index - 1]!;
     const current = observations[index]!;
-
-    const openedAt = Date.parse(previous.observedAt);
-    const closedAt = Date.parse(current.observedAt);
-    if (Number.isNaN(openedAt) || Number.isNaN(closedAt) || closedAt <= openedAt) {
-      return refuse('unordered_history');
-    }
+    const openedAt = timeline[index - 1]!;
+    const closedAt = timeline[index]!;
 
     const delivered = receiptsWithin(receipts, openedAt, closedAt);
-    if (delivered === undefined) {
-      return refuse('unreadable_amount');
-    }
-
-    const available = addDecimals(previous.onHand, delivered);
+    const available = delivered === undefined ? undefined : addDecimals(previous.onHand, delivered);
     const consumption = available === undefined
       ? undefined
       : subtractDecimals(available, current.onHand);
@@ -162,6 +170,45 @@ export function deriveCoverageTarget(
   };
 }
 
+function validatedTimeline(
+  observations: readonly StockObservation[],
+): readonly number[] | CoverageRefusalReason {
+  const timeline: number[] = [];
+  for (const observation of observations) {
+    const observedAt = Date.parse(observation.observedAt);
+    const previous = timeline[timeline.length - 1];
+    if (Number.isNaN(observedAt) || (previous !== undefined && observedAt <= previous)) {
+      return 'unordered_history';
+    }
+
+    const sign = compareDecimals(observation.onHand, '0');
+    if (sign === undefined) {
+      return 'unreadable_amount';
+    }
+    if (sign < 0) {
+      return 'negative_quantity';
+    }
+    timeline.push(observedAt);
+  }
+  return timeline;
+}
+
+function validateReceipts(receipts: readonly StockReceipt[]): CoverageRefusalReason | undefined {
+  for (const receipt of receipts) {
+    if (Number.isNaN(Date.parse(receipt.receivedAt))) {
+      return 'invalid_receipt_time';
+    }
+    const sign = compareDecimals(receipt.quantity, '0');
+    if (sign === undefined) {
+      return 'unreadable_amount';
+    }
+    if (sign < 0) {
+      return 'negative_quantity';
+    }
+  }
+  return undefined;
+}
+
 function receiptsWithin(
   receipts: readonly StockReceipt[],
   openedAt: number,
@@ -170,7 +217,7 @@ function receiptsWithin(
   let total = '0';
   for (const receipt of receipts) {
     const receivedAt = Date.parse(receipt.receivedAt);
-    if (Number.isNaN(receivedAt) || receivedAt <= openedAt || receivedAt > closedAt) {
+    if (receivedAt <= openedAt || receivedAt > closedAt) {
       continue;
     }
     const next = addDecimals(total, receipt.quantity);
@@ -188,7 +235,7 @@ function isEmpty(quantity: string): boolean {
 
 function validCoverageDays(policy: CoveragePolicy): number | undefined {
   const days = [policy.leadTimeDays, policy.reviewPeriodDays, policy.safetyDays];
-  if (days.some((value) => !Number.isSafeInteger(value) || value < 0)) {
+  if (days.some((value) => !Number.isSafeInteger(value) || value < 0 || value > MAX_COVERAGE_DAYS)) {
     return undefined;
   }
   if (!Number.isSafeInteger(policy.minimumIntervals) || policy.minimumIntervals < 1) {
@@ -199,7 +246,10 @@ function validCoverageDays(policy: CoveragePolicy): number | undefined {
   }
 
   const total = days.reduce((left, right) => left + right, 0);
-  return total > 0 ? total : undefined;
+  if (!Number.isSafeInteger(total) || total <= 0 || total > MAX_COVERAGE_DAYS) {
+    return undefined;
+  }
+  return total;
 }
 
 function refuse(reason: CoverageRefusalReason): CoverageDerivation {

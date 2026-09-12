@@ -7,6 +7,8 @@ import {
   type NeedLine,
   type SupplierOffer,
   type SupplierStanding,
+  type SupplyRanking,
+  type SupplyRankingResult,
 } from '../src/supply-ranking.ts';
 
 const need: NeedLine = { needId: 'need-1', productId: 'pack-10', quantity: '10', unit: 'box' };
@@ -33,7 +35,7 @@ function standing(overrides: Partial<SupplierStanding> = {}): SupplierStanding {
     supplierId: 'sup-a',
     relationshipStatus: 'active',
     acceptedTermsVersion: 4,
-    fulfilmentRate: '0.95',
+    performance: { kind: 'rated', fulfilmentRate: '0.95' },
     ...overrides,
   };
 }
@@ -44,12 +46,17 @@ const standings: readonly SupplierStanding[] = [
   standing({ supplierId: 'sup-c' }),
 ];
 
+function ranking(result: SupplyRankingResult): SupplyRanking {
+  assert.equal(result.kind, 'ranked', result.kind === 'refused' ? result.reason : '');
+  return result.kind === 'ranked' ? result.ranking : (undefined as never);
+}
+
 function rankedIds(offers: readonly SupplierOffer[], view = standings): readonly string[] {
-  return rankEligibleSupply(need, offers, view).ranked.map((entry) => entry.supplierId);
+  return ranking(rankEligibleSupply(need, offers, view)).ranked.map((entry) => entry.supplierId);
 }
 
 function exclusionFor(overrides: Partial<SupplierOffer>, view = standings): string {
-  const result = rankEligibleSupply(need, [offer(overrides)], view);
+  const result = ranking(rankEligibleSupply(need, [offer(overrides)], view));
   assert.equal(result.ranked.length, 0);
   return result.excluded[0]?.reason ?? '';
 }
@@ -65,11 +72,11 @@ describe('neutral supply ranking', () => {
   });
 
   it('computes the line total exactly rather than through a float', () => {
-    const result = rankEligibleSupply(
+    const result = ranking(rankEligibleSupply(
       { ...need, quantity: '3' },
       [offer({ unitPrice: '0.1' })],
       standings,
-    );
+    ));
     assert.equal(result.ranked[0]?.lineTotal, '0.3');
   });
 
@@ -100,14 +107,14 @@ describe('neutral supply ranking', () => {
   });
 
   it('discloses sponsorship on the offer and in the summary', () => {
-    const result = rankEligibleSupply(
+    const result = ranking(rankEligibleSupply(
       need,
       [
         offer({ offerId: 'o-a', supplierId: 'sup-a', sponsored: true }),
         offer({ offerId: 'o-b', supplierId: 'sup-b' }),
       ],
       standings,
-    );
+    ));
     assert.equal(result.sponsoredCount, 1);
     assert.equal(result.ranked.find((entry) => entry.supplierId === 'sup-a')?.sponsored, true);
     assert.equal(result.ranked.find((entry) => entry.supplierId === 'sup-b')?.sponsored, false);
@@ -125,7 +132,10 @@ describe('neutral supply ranking', () => {
     assert.deepEqual(
       rankedIds(
         [offer({ supplierId: 'sup-a' }), offer({ supplierId: 'sup-b' })],
-        [standing({ fulfilmentRate: '0.80' }), standing({ supplierId: 'sup-b', fulfilmentRate: '0.99' })],
+        [
+          standing({ performance: { kind: 'rated', fulfilmentRate: '0.80' } }),
+          standing({ supplierId: 'sup-b', performance: { kind: 'rated', fulfilmentRate: '0.99' } }),
+        ],
       ),
       ['sup-b', 'sup-a'],
     );
@@ -137,7 +147,7 @@ describe('neutral supply ranking', () => {
   });
 
   it('names the first criterion where each offer parts from the leader', () => {
-    const result = rankEligibleSupply(
+    const result = ranking(rankEligibleSupply(
       need,
       [
         offer({ supplierId: 'sup-a', unitPrice: '11.00' }),
@@ -145,7 +155,7 @@ describe('neutral supply ranking', () => {
         offer({ supplierId: 'sup-c', unitPrice: '11.00', leadTimeDays: 9 }),
       ],
       standings,
-    );
+    ));
 
     const by = (id: string): string | null =>
       result.ranked.find((entry) => entry.supplierId === id)?.differsFromLeaderAt ?? null;
@@ -186,7 +196,7 @@ describe('supply eligibility gates', () => {
   });
 
   it('returns an empty ranking rather than a fallback when nothing qualifies', () => {
-    const result = rankEligibleSupply(need, [offer({ unit: 'strip' })], standings);
+    const result = ranking(rankEligibleSupply(need, [offer({ unit: 'strip' })], standings));
     assert.deepEqual(result.ranked, []);
     assert.equal(result.excluded.length, 1);
     assert.equal(result.sponsoredCount, 0);

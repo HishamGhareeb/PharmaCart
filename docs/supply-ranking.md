@@ -49,3 +49,38 @@ The ranking criteria are hard-coded in a fixed order. Making them configurable p
 Fulfilment rate is taken as given on the supplier standing. Nothing here computes it, and a rate derived from too few orders would rank a new supplier on noise. Whatever populates it needs a confidence floor.
 
 Finally, the whole package assumes several connected suppliers with comparable offers for the same product. That assumption is commercial, not technical, and it is currently unmet.
+
+## 6. Public types, as of the commercial policy hardening
+
+Performance is now a state rather than a number, so an unrated supplier never receives a manufactured rate:
+
+```ts
+type SupplierPerformanceRating =
+  | { kind: 'rated'; fulfilmentRate: string }
+  | { kind: 'unrated' }
+
+type SupplierStanding = {
+  supplierId: string
+  relationshipStatus: 'active' | 'suspended' | 'revoked'
+  acceptedTermsVersion: number
+  performance: SupplierPerformanceRating
+}
+```
+
+`rankEligibleSupply` returns a discriminated union, and the ranking discloses `unratedCount` alongside `sponsoredCount`:
+
+```ts
+type SupplyRankingResult =
+  | { kind: 'ranked'; ranking: SupplyRanking }
+  | { kind: 'refused'; reason: 'invalid_need' | 'mixed_rating_comparison'; detail: string }
+```
+
+`ExclusionReason` gains `negative_price`, `invalid_lead_time` and `invalid_rating`. A need whose quantity is not a positive exact decimal is refused as `invalid_need`, since nothing can be priced against it.
+
+### Mixed rated and unrated comparison is refused, and why
+
+Comparing rates only when both candidates are rated, and otherwise falling back to supplier identity, is not transitive. Given three offers tied on line total and lead time where A is rated 0.5, B is unrated and C is rated 0.9, identity orders A before B and B before C while rate orders C before A. A sort built on a cyclic comparator is input-order dependent, which would destroy the permutation stability this package guarantees.
+
+Before sorting, eligible offers are grouped by line total and lead time. If any group holds both a rated and an unrated supplier, the ranking refuses with `mixed_rating_comparison` and names the group. Groups that are wholly rated or wholly unrated sort normally, so the ordinary case, where price or lead time separates suppliers, is unaffected.
+
+**This leaves a product decision open.** Unrated suppliers could rank last within a tie, first as deliberate information buying, or be interleaved at a fixed exploration rate. Only the last addresses the selection bias recorded in `docs/supplier-performance.md`, where a supplier ranked down stops accumulating evidence and can never climb back. The refusal makes the gap visible rather than hiding it inside a sort.

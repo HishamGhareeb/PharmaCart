@@ -39,3 +39,20 @@ No acceptance criterion covers this, which is now the third such package alongsi
 Nothing reads order history. The derivation takes records as arguments and takes `asOf` as an argument rather than reading a clock, so it is deterministic and testable, and whoever calls it must pass a consistent view.
 
 Three limits are real. There is no recency weighting, so a supplier that was unreliable a year ago and dependable since carries its old record at full weight forever. There is no seasonality, so a distributor that struggles only in one month looks mildly bad all year. And the deepest issue is selection: fulfilment is only observed for orders actually placed, and orders are placed with suppliers already favoured, so a supplier ranked down stops accumulating evidence and cannot climb back. A ranking that feeds its own inputs needs deliberate exploration, and nothing here provides it.
+
+## 5. Public types, as of the commercial policy hardening
+
+`PerformanceRefusalReason` gains `negative_quantity` and `delivered_exceeds_ordered`.
+
+Every record is validated before any of them are excluded, so a malformed order can no longer hide behind an outcome that would have dropped it unread. A negative ordered quantity on an unknown-outcome order is now a refusal, where previously the exclusion ran first and the defect was never seen.
+
+```ts
+// refused: 'negative_quantity', even though this outcome is excluded from scoring
+{ orderId: 'o-3', orderedQuantity: '-5', outcome: { kind: 'unknown' } }
+// refused: 'delivered_exceeds_ordered'
+{ orderedQuantity: '10', outcome: { kind: 'delivered', deliveredQuantity: '11', deliveredAt } }
+```
+
+Elapsed time now accumulates as integer milliseconds and converts to days once, through exact division. This fixes a real defect rather than adding a guard: the previous code summed fractional days in floating point and rendered the total with `String()`, which emits exponential notation below `1e-6`, and the exact-decimal parser correctly refused it. An order delivered less than a tenth of a second after placement therefore failed the whole derivation with `unreadable_amount`.
+
+The understated-lead-time comparison is likewise exact, comparing the longest outstanding elapsed time against the mean without dividing.
