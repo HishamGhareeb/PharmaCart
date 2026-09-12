@@ -36,3 +36,15 @@ Implementation now spans B0 through the B3 synthetic loop. Full acceptance gates
 TypeScript modular monolith; Fastify API; PostgreSQL transactions and row-level security; transactional outbox; pg-boss workers. Domain has no framework or vendor imports. Next.js web, React Native mobile, Electron desktop, and a separate .NET Windows service share the backend. VERSION-MATRIX.md records installed exact versions; remaining framework versions will be verified and pinned at implementation.
 
 Use invented product/account data. External purchasing, production changes, publication and paid services require explicit user authorization.
+
+## Active Claude builder lanes
+
+Run at most three coordinator-managed Claude sessions concurrently. Default model ID: `claude-opus-5` (verified directly; the `opus` alias currently resolves to a different version). Use direct prompt arguments and streaming JSON so tool progress and errors remain observable. Do not silently substitute a model.
+
+| Branch | Exclusive implementation ownership | Integration gate |
+| --- | --- | --- |
+| claude/installation-enforcement | db inventory/installation source, migration 0011, new installation tests | Astra review, sequential PostgreSQL tests |
+| claude/procurement-invariants | db procurement source, optional migration 0012, new procurement invariant tests | Astra review, sequential PostgreSQL tests |
+| claude/order-recovery-hardening | db orders source, synthetic supplier source, new recovery/fake concurrency tests | Astra review, sequential PostgreSQL tests |
+
+Claude's separate commercial-policy worktree is outside these three managed lanes; leave its four policy packages untouched. Do not start a duplicate commercial task. Builders do not run shared database resets, commit, push or integrate one another's work. Coordinator reviews and integrates each completed result before assigning that lane another bounded task. Next queued work after these prerequisites: guarded drop-directory ingestion with an atomic watermark, then acceptance evidence for the authenticated synthetic loop. Fable is reserved for a concrete complexity need, not routine work.
