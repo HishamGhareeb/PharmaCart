@@ -105,3 +105,19 @@ Following the instruction's own fallback, mixed-rating comparison is refused rat
 ## 7. Boundary
 
 No acceptance criterion moves to `PASS`. This is pure-domain work with no database, no API and no client; AC-001 through AC-018 remain `NOT RUN`. Ranking, coverage targets and supplier performance still have no acceptance criterion of their own, which is recorded in their package documents.
+
+## 8. Follow-on: sort modes and filters
+
+Branch `claude/ranking-sort-and-filters`, based on this work at `01f5eba`.
+
+RED: the new suite could not load at all, since the module exported no `SORT_CRITERIA`.
+
+```
+$ node --experimental-strip-types --test packages/supply-ranking/test/supply-ranking-sort-filters.test.ts
+SyntaxError: The requested module '../src/supply-ranking.ts' does not provide an export named 'SORT_CRITERIA'
+ℹ tests 1, pass 0, fail 1
+```
+
+GREEN: `packages/supply-ranking/test/*.test.ts` 44 tests, 44 pass, 0 fail. Repository 376 tests, 375 pass, 1 inherited failure. Typecheck 4 inherited errors, lint clean.
+
+`recommended` is refused as `recommended_sort_undefined` rather than implemented, on the same reasoning as the mixed-rating refusal: its weights would silently become the product's position on what a good supplier is, and a default a supplier can pay to move is how placement gets sold.

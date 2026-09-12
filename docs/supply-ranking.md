@@ -84,3 +84,32 @@ Comparing rates only when both candidates are rated, and otherwise falling back 
 Before sorting, eligible offers are grouped by line total and lead time. If any group holds both a rated and an unrated supplier, the ranking refuses with `mixed_rating_comparison` and names the group. Groups that are wholly rated or wholly unrated sort normally, so the ordinary case, where price or lead time separates suppliers, is unaffected.
 
 **This leaves a product decision open.** Unrated suppliers could rank last within a tie, first as deliberate information buying, or be interleaved at a fixed exploration rate. Only the last addresses the selection bias recorded in `docs/supplier-performance.md`, where a supplier ranked down stops accumulating evidence and can never climb back. The refusal makes the gap visible rather than hiding it inside a sort.
+
+## 7. Sort modes and filters
+
+The pharmacy chooses how its own supply is ordered. `rankEligibleSupply` takes an optional fourth argument:
+
+```ts
+rankEligibleSupply(need, offers, standings, {
+  sortMode: 'price' | 'lead_time' | 'rating' | 'available_quantity' | 'recommended',
+  filters: { maxLeadTimeDays?, maxUnitPrice?, minFulfilmentRate?, minAvailableQuantity?, excludeSponsored? },
+})
+```
+
+Omitting it sorts by price, which is what the package did before modes existed. Each mode is a declared precedence exported as `SORT_CRITERIA`, so a screen can show what it sorted by rather than asserting that it was fair. Sponsorship appears in none of them.
+
+**A pharmacist-chosen sort does not threaten neutrality; a platform-chosen default is where neutrality is won or lost.** That is why `recommended` is refused as `recommended_sort_undefined` rather than implemented. Its weights would encode a position on what makes a good supplier, and a default that a supplier can pay to influence is the exact mechanism a marketplace uses to sell placement. If it is built, three properties keep the claim intact: the weights are shown on screen, sponsorship is never an input, and the weights are identical for every pharmacy.
+
+**Filtering is not exclusion and is reported separately.** An offer removed by the pharmacy's own ceiling appears in `filtered` with a `filtered_*` reason; an offer that was never eligible appears in `excluded` with its eligibility reason. A purchaser can then tell "your price cap removed two" from "two suppliers cannot sell you this at all", which are different problems with different fixes. Eligibility is evaluated first, so an ineligible offer is never reported as merely filtered.
+
+`minFulfilmentRate` removes unrated suppliers along with low-rated ones, since an unrated supplier cannot meet a floor. That is a filter decision, not the ranking-policy decision, and it does not presume where unrated suppliers would sort.
+
+### Available quantity is the weakest criterion here
+
+Sorting by it ranks headroom, not capability: eligibility already refuses any offer that cannot cover the whole line, so every ranked offer can already fill the order.
+
+More importantly it is the only criterion the supplier states and nobody verifies. A price is checked against the invoice and a lead time against the delivery, but stated availability is confirmed only once an order is placed, so inflating it is free and sorts the inflater to the top. Fulfilment rate catches that eventually, and only after a pharmacy has been let down. Prefer `minAvailableQuantity` as a filter over `available_quantity` as a primary sort, and treat a supplier whose stated availability never matches what arrives as a fulfilment problem rather than a ranking one.
+
+### What this still does not do
+
+Ranking assumes one supplier fills the whole line. When no single supplier holds enough, every offer is excluded as `insufficient_stock` and the pharmacy is told nothing is available, even where two suppliers together could cover it comfortably. Splitting a line across suppliers is a different problem with its own failure modes, and it is unbuilt.
