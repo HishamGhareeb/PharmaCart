@@ -1,7 +1,7 @@
 import { spawn } from 'node:child_process';
 
 const children = ['infra/oidc/dev-server.ts', 'apps/api/src/server.ts'].map(path =>
-  spawn(process.execPath, [path], { stdio: 'inherit', windowsHide: true }));
+  spawn(process.execPath, [...(path.startsWith('apps/')?['--env-file=infra/runtime.env']:[]),path], { stdio: 'inherit', windowsHide: true }));
 let stopping = false;
 function stop(code = 0) {
   if (stopping) return;

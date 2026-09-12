@@ -65,7 +65,7 @@ export async function approveQuote(client:RuntimeClient,context:TenantContext,qu
         ||current.need_version!==line.needVersion||current.need_status!=='open'||current.map_version!==line.mapVersion||current.map_status!=='verified'||current.product_status!=='verified'||current.verification_status!=='verified')throw new ProcurementError(409,'REQUOTE_REQUIRED');
     }
     const period=(await client.query("SELECT to_char(now() AT TIME ZONE 'UTC','YYYY-MM') AS period")).rows[0].period;
-    const reserved=await client.query('UPDATE budget SET reserved_amount=reserved_amount+$4::numeric WHERE organisation_id=$1 AND branch_id=$2 AND period=$3 AND currency=$5 AND reserved_amount+$4::numeric<=limit_amount RETURNING period',[context.organisationId,context.branchId,period,quote.total,quote.currency]);
+    const reserved=await client.query('UPDATE budget SET reserved_amount=reserved_amount+$4::numeric WHERE organisation_id=$1 AND branch_id=$2 AND period=$3 AND currency=$5 AND reserved_amount+spent_amount+$4::numeric<=limit_amount RETURNING period',[context.organisationId,context.branchId,period,quote.total,quote.currency]);
     if(!reserved.rowCount)throw new ProcurementError(409,'BUDGET_EXCEEDED');
     approvalId=randomUUID();intentIds=[];status=202;
     await client.query('INSERT INTO approval(id,organisation_id,branch_id,quote_id,actor_id) VALUES($1,$2,$3,$4,$5)',[approvalId,context.organisationId,context.branchId,quoteId,context.membershipId]);

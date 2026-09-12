@@ -1,0 +1,212 @@
+
+> pharmacart@0.0.0 test:coverage
+> node --experimental-strip-types --experimental-test-coverage --test-coverage-exclude=**/test/** --test-coverage-exclude=**/*.test.ts --test-coverage-lines=80 --test-coverage-functions=80 --test-coverage-branches=80 --test --test-concurrency=1 packages/contracts/test/*.test.ts packages/test-fixtures/test/*.test.ts packages/domain/test/*.test.ts packages/auth/test/*.test.ts apps/api/test/*.test.ts infra/oidc/provider.test.ts packages/db/test/*.test.mjs packages/db/test/*.test.ts
+
+✔ GET /health reports the API as healthy and includes a generated correlation UUID (154.8316ms)
+✔ a valid client correlation UUID is retained (5.8484ms)
+✔ an invalid client correlation value is replaced and never reflected (5.4135ms)
+✔ unknown routes use the stable error envelope and correlation header (6.9293ms)
+✔ malformed JSON is rejected at the request boundary without leaking parser details (9.9567ms)
+✔ schema validation rejects unknown command properties without echoing values (69.0661ms)
+✔ oversized bodies are rejected with the documented 413 boundary error (8.0527ms)
+✔ unsupported request media types receive a stable redacted response (5.144ms)
+✔ unexpected errors are redacted behind one stable internal error (5.9038ms)
+✔ OpenAPI endpoint serves the canonical implemented health contract (147.5337ms)
+oidc-provider WARNING: a quick start development-only in-memory adapter is used, you MUST change it in order to not lose all stateful provider data upon restart and to be able to share these between processes
+oidc-provider WARNING: a quick start development-only feature devInteractions is enabled, you are expected to disable these interactions and provide your own
+▶ local OIDC provider
+  ✔ exposes OIDC discovery for the synthetic PKCE client (50.7751ms)
+  ✔ refuses non-loopback issuers (0.5799ms)
+  ✔ refuses to run in production mode (0.1682ms)
+✔ local OIDC provider (53.1233ms)
+oidc-provider WARNING: a quick start development-only in-memory adapter is used, you MUST change it in order to not lose all stateful provider data upon restart and to be able to share these between processes
+oidc-provider WARNING: a quick start development-only feature devInteractions is enabled, you are expected to disable these interactions and provide your own
+oidc-provider NOTICE: default ttl.Interaction function called, you SHOULD change it in order to define the expiration for Interaction artifacts.
+oidc-provider NOTICE: default ttl.Session function called, you SHOULD change it in order to define the expiration for Session artifacts.
+oidc-provider NOTICE: default ttl.Grant function called, you SHOULD change it in order to define the expiration for Grant artifacts.
+oidc-provider NOTICE: default ttl.AccessToken function called, you SHOULD change it in order to define the expiration for AccessToken artifacts.
+oidc-provider NOTICE: default ttl.IdToken function called, you SHOULD change it in order to define the expiration for IdToken artifacts.
+✔ local OIDC authorization code with PKCE yields a verifiable API access token (412.433ms)
+▶ access token verification
+  ✔ returns a minimal verified principal for a valid RS256 access token (38.2433ms)
+  ✔ rejects a token with expired (21.353ms)
+  ✔ rejects a token with wrong issuer (3.8776ms)
+  ✔ rejects a token with wrong audience (28.5493ms)
+  ✔ rejects a token with missing subject (21.1171ms)
+  ✔ rejects a token with missing issued-at (18.9326ms)
+  ✔ rejects a token with ID token type (17.9561ms)
+  ✔ rejects an unsigned token (1.3909ms)
+  ✔ rejects configuration without an explicit JWKS endpoint (0.6284ms)
+✔ access token verification (214.529ms)
+▶ approval command validation
+  ✔ accepts exactly a positive safe integer quoteVersion (1.875ms)
+  ✔ rejects null, arrays, and primitive bodies (0.2111ms)
+  ✔ rejects missing and unknown properties (0.1238ms)
+  ✔ rejects non-positive, fractional, and unsafe versions (0.2369ms)
+✔ approval command validation (4.1498ms)
+▶ canonical decimal strings
+  ✔ accepts canonical integers and fractions including a negative fraction (1.4363ms)
+  ✔ rejects non-strings and noncanonical spellings (0.183ms)
+  ✔ enforces the default length bound before attempting validation (0.1766ms)
+  ✔ allows callers to choose a smaller positive length bound (0.6682ms)
+  ✔ nonnegative refinement accepts zero and rejects negative values (0.1426ms)
+  ✔ positive refinement rejects zero and negative values (0.2013ms)
+✔ canonical decimal strings (5.6737ms)
+▶ canonical schema generation
+  ✔ draft 2020-12 schemas are strict and generated artifacts are current (184.2446ms)
+  ✔ generated artifact records a deterministic SHA-256 source hash (1.3031ms)
+  ✔ derives object properties from schema changes instead of only refreshing the hash (5.7188ms)
+  ✔ fails closed when a schema uses an unsupported keyword (4.1683ms)
+  ✔ derives discriminant changes and resolves local schema references (4.1981ms)
+  ✔ rejects recursive refs and open objects rather than emitting inaccurate types (7.4604ms)
+  ✔ Ajv 2020 compiles canonical schemas and agrees with runtime validators (90.6695ms)
+✔ canonical schema generation (300.6456ms)
+▶ submission follow-up decision
+  ✔ records accepted and rejected submission outcomes as terminal evidence (2.3326ms)
+  ✔ an unknown submission without lookup evidence is never retried (0.1518ms)
+  ✔ lookup found resolves an unknown submission to acknowledgement (0.1809ms)
+  ✔ retry requires both authoritative not-found evidence and adapter permission (0.1863ms)
+  ✔ network retry permission cannot authorize retry without trusted capability (0.2252ms)
+  ✔ trusted capability cannot override an explicit adapter retry refusal (0.2463ms)
+  ✔ inconclusive lookup stays in human review without blind retry (0.2117ms)
+  ✔ lookup evidence cannot override an already terminal submission result (0.1535ms)
+  ✔ strictly validates untrusted submit results (0.5213ms)
+  ✔ strictly validates untrusted lookup results (0.6145ms)
+✔ submission follow-up decision (7.5337ms)
+oidc-provider WARNING: a quick start development-only in-memory adapter is used, you MUST change it in order to not lose all stateful provider data upon restart and to be able to share these between processes
+oidc-provider WARNING: a quick start development-only feature devInteractions is enabled, you are expected to disable these interactions and provide your own
+oidc-provider NOTICE: default ttl.Interaction function called, you SHOULD change it in order to define the expiration for Interaction artifacts.
+oidc-provider NOTICE: default ttl.Session function called, you SHOULD change it in order to define the expiration for Session artifacts.
+oidc-provider NOTICE: default ttl.Grant function called, you SHOULD change it in order to define the expiration for Grant artifacts.
+oidc-provider NOTICE: default ttl.AccessToken function called, you SHOULD change it in order to define the expiration for AccessToken artifacts.
+oidc-provider NOTICE: default ttl.IdToken function called, you SHOULD change it in order to define the expiration for IdToken artifacts.
+✔ AC-001: real OIDC and PostgreSQL API deny foreign private needs without disclosure (6984.3491ms)
+✔ runtime role is a non-login, non-owner safety role without elevated attributes (6316.2697ms)
+✔ private needs are limited to the current tenant and branch (317.1152ms)
+✔ shared orders are visible only to a participating party (1329.2126ms)
+✔ tenant and branch context disappears after commit and rollback (657.0877ms)
+✔ tenant and branch context disappears after a SQL error and rollback in the same session (326.6862ms)
+✔ cross-organisation and out-of-scope branch writes are rejected (660.3612ms)
+✔ composite foreign keys reject a branch paired with the wrong organisation (662.8428ms)
+✔ organisation kind constraints reject reversed order parties (302.8692ms)
+✔ need quantities reject PostgreSQL non-finite numeric values (931.0489ms)
+✔ migration runner skips the same hash and rejects a changed ledger hash (5342.9974ms)
+oidc-provider WARNING: a quick start development-only in-memory adapter is used, you MUST change it in order to not lose all stateful provider data upon restart and to be able to share these between processes
+oidc-provider WARNING: a quick start development-only feature devInteractions is enabled, you are expected to disable these interactions and provide your own
+oidc-provider NOTICE: default ttl.Interaction function called, you SHOULD change it in order to define the expiration for Interaction artifacts.
+oidc-provider NOTICE: default ttl.Session function called, you SHOULD change it in order to define the expiration for Session artifacts.
+oidc-provider NOTICE: default ttl.Grant function called, you SHOULD change it in order to define the expiration for Grant artifacts.
+oidc-provider NOTICE: default ttl.AccessToken function called, you SHOULD change it in order to define the expiration for AccessToken artifacts.
+oidc-provider NOTICE: default ttl.IdToken function called, you SHOULD change it in order to define the expiration for IdToken artifacts.
+✔ AC-003/004: authenticated durable replay and incomplete snapshots preserve prior stock (9588.6643ms)
+oidc-provider WARNING: a quick start development-only in-memory adapter is used, you MUST change it in order to not lose all stateful provider data upon restart and to be able to share these between processes
+oidc-provider WARNING: a quick start development-only feature devInteractions is enabled, you are expected to disable these interactions and provide your own
+oidc-provider NOTICE: default ttl.Interaction function called, you SHOULD change it in order to define the expiration for Interaction artifacts.
+oidc-provider NOTICE: default ttl.Session function called, you SHOULD change it in order to define the expiration for Session artifacts.
+oidc-provider NOTICE: default ttl.Grant function called, you SHOULD change it in order to define the expiration for Grant artifacts.
+oidc-provider NOTICE: default ttl.AccessToken function called, you SHOULD change it in order to define the expiration for AccessToken artifacts.
+oidc-provider NOTICE: default ttl.IdToken function called, you SHOULD change it in order to define the expiration for IdToken artifacts.
+✔ AC-002/005/007/008: binding quotes, parallel approval, changed keys, price freshness and mapping guard (9942.4495ms)
+✔ runtime pool connects with a restricted non-owner login that assumes the NOLOGIN role locally (4940.2698ms)
+✔ authenticated transaction returns the active membership context and only selected-branch rows (12.0016ms)
+✔ subject, organisation, and branch selectors cannot grant membership authority (22.2904ms)
+✔ revoked memberships are denied on their next transaction (716.0369ms)
+✔ transaction-local tenant context is cleared after success and callback failure on a reused connection (23.631ms)
+oidc-provider WARNING: a quick start development-only in-memory adapter is used, you MUST change it in order to not lose all stateful provider data upon restart and to be able to share these between processes
+oidc-provider WARNING: a quick start development-only feature devInteractions is enabled, you are expected to disable these interactions and provide your own
+oidc-provider NOTICE: default ttl.Interaction function called, you SHOULD change it in order to define the expiration for Interaction artifacts.
+oidc-provider NOTICE: default ttl.Session function called, you SHOULD change it in order to define the expiration for Session artifacts.
+oidc-provider NOTICE: default ttl.Grant function called, you SHOULD change it in order to define the expiration for Grant artifacts.
+oidc-provider NOTICE: default ttl.AccessToken function called, you SHOULD change it in order to define the expiration for AccessToken artifacts.
+oidc-provider NOTICE: default ttl.IdToken function called, you SHOULD change it in order to define the expiration for IdToken artifacts.
+✔ AC-006/009/010/014: timeout lookup, partial quantities, duplicate receipt and actual restore stay safe (32168.8784ms)
+▶ verified commercial-pack mapping
+  ✔ approves one exact verified identifier and full pack identity match (3.4926ms)
+  ✔ holds ambiguous same-brand text with no verified identifier for review (0.2464ms)
+  ✔ holds identifier matches with a different strength, form, manufacturer, pack, or sale unit (0.403ms)
+  ✔ requires an explicitly verified identifier and verified product status (0.1777ms)
+  ✔ preserves opaque identifiers including leading zeroes (0.2049ms)
+  ✔ holds multiple exact verified candidates for review (0.1971ms)
+  ✔ rejects noncanonical or nonpositive pack-size values as missing identity (0.2254ms)
+✔ verified commercial-pack mapping (6.628ms)
+▶ multipart inventory snapshots
+  ✔ never lets an old in-progress snapshot replace a newer completed one (4.7167ms)
+  ✔ scopes event identities by installation (0.3253ms)
+  ✔ does not republish a completed snapshot when equivalent content arrives under a different event ID (0.3408ms)
+  ✔ treats object-key order as irrelevant when detecting event replay (0.3191ms)
+  ✔ supports opaque source and installation IDs that match object prototype names (0.3385ms)
+  ✔ deduplicates an identical stable event without another projection update (0.3069ms)
+  ✔ rejects a reused event identity with conflicting content (1.4571ms)
+  ✔ tracks partitions and the completion marker, retaining missing previous rows as stale until all parts arrive (0.574ms)
+  ✔ rejects conflicting duplicate partitions even when event IDs differ (0.2898ms)
+  ✔ scopes snapshot identity by installation (0.2188ms)
+  ✔ rejects stale sequences and prevents an older snapshot from overwriting a completed projection (0.2371ms)
+  ✔ rejects invalid quantities, duplicate source rows, and malformed completion lists (0.236ms)
+✔ multipart inventory snapshots (12.1033ms)
+✔ generates the same fixture graph on every call (4.2406ms)
+✔ returns a fresh, deeply independent graph on every call (0.5125ms)
+✔ contains the required organisations, branches, roles, and invented packs (0.5862ms)
+✔ maintains referential integrity across the fixture graph (0.4376ms)
+✔ all fixture entity IDs are canonical UUIDs (0.5954ms)
+✔ models ambiguous strengths without collapsing product identity (0.2913ms)
+✔ models account-specific active offers and an expired offer (1.3461ms)
+✔ models an incomplete multipart snapshot that cannot erase prior stock (0.3228ms)
+ℹ tests 96
+ℹ suites 8
+ℹ pass 96
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 89726.3482
+ℹ start of coverage report
+ℹ --------------------------------------------------------------------------------------------------------
+ℹ file                          | line % | branch % | funcs % | uncovered lines
+ℹ --------------------------------------------------------------------------------------------------------
+ℹ apps                          |        |          |         | 
+ℹ  api                          |        |          |         | 
+ℹ   src                         |        |          |         | 
+ℹ    app.ts                     | 100.00 |   100.00 |  100.00 | 
+ℹ    errors.ts                  | 100.00 |   100.00 |  100.00 | 
+ℹ    tenant-api.ts              |  97.18 |    86.49 |   93.75 | 62-63
+ℹ infra                         |        |          |         | 
+ℹ  oidc                         |        |          |         | 
+ℹ   provider.ts                 | 100.00 |    83.33 |   57.14 | 
+ℹ packages                      |        |          |         | 
+ℹ  auth                         |        |          |         | 
+ℹ   src                         |        |          |         | 
+ℹ    verify-access-token.ts     | 100.00 |    71.43 |  100.00 | 
+ℹ  contracts                    |        |          |         | 
+ℹ   scripts                     |        |          |         | 
+ℹ    contract-codegen.ts        |  91.67 |    80.00 |   94.74 | 45-46 54-55 63-64 71-72 77-78 110 121-122
+ℹ    openapi.ts                 | 100.00 |   100.00 |  100.00 | 
+ℹ    verify-contracts.ts        |  88.24 |    33.33 |  100.00 | 13-14
+ℹ   src                         |        |          |         | 
+ℹ    approval.ts                | 100.00 |   100.00 |  100.00 | 
+ℹ    decimal.ts                 | 100.00 |   100.00 |  100.00 | 
+ℹ    inventory-schema.ts        | 100.00 |   100.00 |  100.00 | 
+ℹ    quote-schema.ts            | 100.00 |   100.00 |  100.00 | 
+ℹ    submission.ts              |  93.65 |    90.41 |  100.00 | 67-68 72-73 84-85 95-96
+ℹ  db                           |        |          |         | 
+ℹ   scripts                     |        |          |         | 
+ℹ    postgres.mjs               |  71.53 |    64.71 |   80.00 | 30-31 56-57 69-70 105-132 134-135 140-144
+ℹ    runtime-setup.mjs          |  82.98 |    58.33 |  100.00 | 21 28 31 43-47
+ℹ   src                         |        |          |         | 
+ℹ    inventory.ts               | 100.00 |    88.24 |   75.00 | 
+ℹ    orders.ts                  |  98.28 |    77.78 |   91.30 | 80-81
+ℹ    procurement.ts             | 100.00 |    70.73 |   90.00 | 
+ℹ    runtime.ts                 |  94.23 |    63.16 |   85.71 | 68-69 72-73 105-106 109-111
+ℹ  domain                       |        |          |         | 
+ℹ   src                         |        |          |         | 
+ℹ    commercial-pack-mapping.ts | 100.00 |   100.00 |  100.00 | 
+ℹ    inventory-snapshot.ts      |  95.50 |    89.74 |   95.45 | 76-77 95-96 106-107 110-111 134-135
+ℹ  supplier                     |        |          |         | 
+ℹ   src                         |        |          |         | 
+ℹ    fake.ts                    |  97.83 |    77.27 |   92.31 | 41
+ℹ  test-fixtures                |        |          |         | 
+ℹ   src                         |        |          |         | 
+ℹ    index.ts                   | 100.00 |   100.00 |  100.00 | 
+ℹ --------------------------------------------------------------------------------------------------------
+ℹ all files                     |  94.92 |    84.14 |   91.98 | 
+ℹ --------------------------------------------------------------------------------------------------------
+ℹ end of coverage report

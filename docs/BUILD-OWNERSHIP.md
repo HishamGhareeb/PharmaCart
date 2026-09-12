@@ -27,7 +27,7 @@ The workspace initially contained only .git. No application, dependencies or pas
 - B2: offers, quotes, budget and approval; AC-005, AC-007, AC-008.
 - B3: fake supplier and reconciliation; AC-006, AC-009, AC-010, AC-014.
 
-All gates remain pending. Design packets alone do not pass B0.
+Implementation now spans B0 through the B3 synthetic loop. Full acceptance gates remain pending; see STATUS.md and docs/testing for measured evidence. The current worker is one-shot; pg-boss remains planned.
 
 ## Architecture baseline
 

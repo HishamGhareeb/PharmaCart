@@ -40,7 +40,8 @@ export async function configureRuntimeLogin(database = 'pharmacart_test') {
 }
 
 if (process.argv[1] === fileURLToPath(import.meta.url)) {
-  await configureRuntimeLogin(process.argv[2] ?? 'pharmacart_test');
+  const database=process.argv[2] ?? 'pharmacart_test';
+  const {connectionString}=await configureRuntimeLogin(database);
+  if(database==='pharmacart')await writeFile(resolve(packageDirectory,'..','..','infra','runtime.env'),`PHARMACART_RUNTIME_DATABASE_URL=${connectionString}\n`,{mode:0o600});
   process.stdout.write('Runtime database login configured.\n');
 }
-

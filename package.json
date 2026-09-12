@@ -9,7 +9,7 @@
   "packageManager": "npm@11.17.0",
   "scripts": {
     "test": "node --experimental-strip-types --test packages/contracts/test/*.test.ts packages/test-fixtures/test/*.test.ts packages/domain/test/*.test.ts packages/auth/test/*.test.ts apps/api/test/*.test.ts infra/oidc/provider.test.ts",
-    "test:coverage": "node --experimental-strip-types --experimental-test-coverage --test-coverage-exclude=**/test/** --test-coverage-exclude=**/*.test.ts --test-coverage-lines=80 --test-coverage-functions=80 --test-coverage-branches=80 --test packages/contracts/test/*.test.ts packages/test-fixtures/test/*.test.ts packages/domain/test/*.test.ts packages/auth/test/*.test.ts apps/api/test/*.test.ts infra/oidc/provider.test.ts",
+    "test:coverage": "node --experimental-strip-types --experimental-test-coverage --test-coverage-exclude=**/test/** --test-coverage-exclude=**/*.test.ts --test-coverage-lines=80 --test-coverage-functions=80 --test-coverage-branches=80 --test --test-concurrency=1 packages/contracts/test/*.test.ts packages/test-fixtures/test/*.test.ts packages/domain/test/*.test.ts packages/auth/test/*.test.ts apps/api/test/*.test.ts infra/oidc/provider.test.ts packages/db/test/*.test.mjs packages/db/test/*.test.ts",
     "db:up": "docker compose -p pharmacart -f infra/compose.yaml up -d --wait",
     "db:stop": "docker compose -p pharmacart -f infra/compose.yaml stop",
     "db:status": "docker compose -p pharmacart -f infra/compose.yaml ps",
@@ -20,12 +20,15 @@
     "db:migrate": "node packages/db/scripts/postgres.mjs pharmacart",
     "test:integration": "node --test --test-concurrency=1 packages/db/test/*.test.mjs packages/db/test/*.test.ts",
     "dev": "node scripts/dev.mjs",
-    "dev:api": "node apps/api/src/server.ts",
+    "dev:api": "node --env-file=infra/runtime.env apps/api/src/server.ts",
     "dev:oidc": "node infra/oidc/dev-server.ts",
     "build": "tsc --noEmit false --rewriteRelativeImportExtensions --outDir dist --rootDir . && node scripts/build-assets.mjs",
-    "start": "node dist/apps/api/src/server.js",
+    "start": "node --env-file=infra/runtime.env dist/apps/api/src/server.js",
     "db:runtime": "node packages/db/scripts/runtime-setup.mjs pharmacart",
-    "verify": "npm run typecheck && npm run lint && npm run contracts:verify && npm run test:coverage && npm run test:integration && npm run build"
+    "verify": "npm run typecheck && npm run lint && npm run contracts:verify && npm run test:coverage && npm run test:integration && npm run build",
+    "db:seed": "node packages/db/scripts/seed-local.ts",
+    "setup": "npm run db:up && npm run db:migrate && npm run db:runtime && npm run db:seed",
+    "worker:once": "node --env-file=infra/runtime.env apps/worker/src/run.ts"
   },
   "devDependencies": {
     "@types/node": "24.10.1",
