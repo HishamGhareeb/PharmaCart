@@ -72,9 +72,18 @@ export type RankingFilters = Readonly<{
   excludeSponsored?: boolean;
 }>;
 
+/**
+ * `whole_line` requires a single supplier to cover the entire need, which is
+ * the default because a split costs an extra delivery, invoice and
+ * relationship. `partial` admits any supplier that can contribute something,
+ * and is what the allocator uses when no single supplier holds enough.
+ */
+export type CoverageMode = 'whole_line' | 'partial';
+
 export type RankingOptions = Readonly<{
   sortMode?: SortMode;
   filters?: RankingFilters;
+  coverage?: CoverageMode;
 }>;
 
 export type ExclusionReason =
@@ -105,6 +114,7 @@ export type RankedOffer = Readonly<{
   lineTotal: string;
   leadTimeDays: number;
   availableQuantity: string;
+  minimumOrderQuantity: string;
   performance: SupplierPerformanceRating;
   sponsored: boolean;
   differsFromLeaderAt: RankingCriterion | null;
@@ -172,6 +182,7 @@ export function rankEligibleSupply(
 ): SupplyRankingResult {
   const sortMode = options.sortMode ?? 'price';
   const filters = options.filters ?? {};
+  const coverage = options.coverage ?? 'whole_line';
 
   if (sortMode === 'recommended') {
     return {
@@ -198,7 +209,7 @@ export function rankEligibleSupply(
   const filtered: FilteredOffer[] = [];
 
   for (const offer of offers) {
-    const assessed = assessOffer(need, offer, standingBySupplier.get(offer.supplierId));
+    const assessed = assessOffer(need, offer, standingBySupplier.get(offer.supplierId), coverage);
     if (typeof assessed === 'string') {
       excluded.push({ offerId: offer.offerId, supplierId: offer.supplierId, reason: assessed });
       continue;
@@ -228,6 +239,7 @@ export function rankEligibleSupply(
     lineTotal: entry.lineTotal,
     leadTimeDays: entry.offer.leadTimeDays,
     availableQuantity: entry.offer.availableQuantity,
+    minimumOrderQuantity: entry.offer.minimumOrderQuantity,
     performance: entry.performance,
     sponsored: entry.offer.sponsored,
     differsFromLeaderAt: leader === undefined ? null : firstDifference(criteria, leader, entry),
@@ -305,6 +317,7 @@ function assessOffer(
   need: NeedLine,
   offer: SupplierOffer,
   standing: SupplierStanding | undefined,
+  coverage: CoverageMode,
 ): EligibleOffer | ExclusionReason {
   if (standing === undefined) {
     return 'no_supplier_standing';
@@ -339,13 +352,16 @@ function assessOffer(
   const lineTotal = multiplyDecimals(offer.unitPrice, need.quantity);
   const stockOrder = compareDecimals(offer.availableQuantity, need.quantity);
   const minimumOrder = compareDecimals(need.quantity, offer.minimumOrderQuantity);
-  if (lineTotal === undefined || stockOrder === undefined || minimumOrder === undefined) {
+  const stockSign = compareDecimals(offer.availableQuantity, '0');
+  const minimumAgainstStock = compareDecimals(offer.availableQuantity, offer.minimumOrderQuantity);
+  if (lineTotal === undefined || stockOrder === undefined || minimumOrder === undefined
+    || stockSign === undefined || minimumAgainstStock === undefined) {
     return 'unreadable_amount';
   }
-  if (stockOrder < 0) {
+  if (coverage === 'partial' ? stockSign <= 0 : stockOrder < 0) {
     return 'insufficient_stock';
   }
-  if (minimumOrder < 0) {
+  if (minimumOrder < 0 || minimumAgainstStock < 0) {
     return 'below_minimum_order';
   }
 

@@ -121,3 +121,17 @@ SyntaxError: The requested module '../src/supply-ranking.ts' does not provide an
 GREEN: `packages/supply-ranking/test/*.test.ts` 44 tests, 44 pass, 0 fail. Repository 376 tests, 375 pass, 1 inherited failure. Typecheck 4 inherited errors, lint clean.
 
 `recommended` is refused as `recommended_sort_undefined` rather than implemented, on the same reasoning as the mixed-rating refusal: its weights would silently become the product's position on what a good supplier is, and a default a supplier can pay to move is how placement gets sold.
+
+## 9. Follow-on: multi-supplier allocation
+
+RED: the module did not exist.
+
+```
+$ node --experimental-strip-types --test packages/supply-ranking/test/allocate-supply.test.ts
+Error [ERR_MODULE_NOT_FOUND]: Cannot find module '.../packages/supply-ranking/src/allocate-supply.ts'
+ℹ tests 1, pass 0, fail 1
+```
+
+GREEN: `allocate-supply.test.ts` 16 tests, 16 pass. `packages/supply-ranking/test/*.test.ts` 60 tests, 60 pass. Repository 392 tests, 391 pass, 1 inherited failure. Typecheck 4 inherited errors, lint clean, audit clean.
+
+`rankEligibleSupply` gains a `coverage` option. The default stays `whole_line`, so every previously recorded behaviour is unchanged; `partial` relaxes the insufficient-stock gate to admit contributors and is what the allocator uses.

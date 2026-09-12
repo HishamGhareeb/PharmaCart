@@ -113,3 +113,28 @@ More importantly it is the only criterion the supplier states and nobody verifie
 ### What this still does not do
 
 Ranking assumes one supplier fills the whole line. When no single supplier holds enough, every offer is excluded as `insufficient_stock` and the pharmacy is told nothing is available, even where two suppliers together could cover it comfortably. Splitting a line across suppliers is a different problem with its own failure modes, and it is unbuilt.
+
+## 8. Filling one need from several suppliers
+
+`allocateAcrossSuppliers` closes the gap the sort modes exposed. Under the whole-line rule, a need of 100 boxes against suppliers holding 60, 50 and 30 excludes all three as `insufficient_stock` and tells the pharmacy nothing is available, when any two of them together cover it comfortably.
+
+```ts
+const result = allocateAcrossSuppliers(need, offers, standings, { sortMode: 'price' })
+// { kind: 'allocated', allocation: { lines: [ { supplierId: 'sup-a', quantity: '60' },
+//                                             { supplierId: 'sup-b', quantity: '40' } ],
+//                                    allocated: '100', unfilled: '0', complete: true } }
+```
+
+Splitting stays a deliberate call rather than an automatic fallback, because each extra supplier is another delivery, another invoice and another relationship. `rankEligibleSupply` keeps its whole-line default; the allocator asks for `coverage: 'partial'`, which admits any supplier that can contribute something rather than only those that can cover everything.
+
+**Allocation is greedy in whatever order the ranking produced.** It inherits the pharmacy's own choice of what to optimise and stays explainable: each supplier is offered as much as it can still usefully contribute, in rank order, until the need is met. Sorted by price with no binding minimum order quantities that is also the cheapest achievable split, since the cheapest units are taken first. Where a minimum order quantity binds it is explainable but not provably optimal, and it makes no attempt to minimise how many suppliers are involved.
+
+**A short fill is stated, never disguised.** `allocated`, `unfilled` and `complete` are all reported, because an allocation that quietly ordered what it could find would look identical to one that succeeded. Two reasons a supplier contributes nothing are distinguished: `need_already_met` for one the allocator never had to reach, and `remainder_below_minimum` for one whose remaining share fell under its own minimum order quantity. Neither is an exclusion, because both offers were perfectly eligible.
+
+**A split arrives when its slowest supplier arrives.** `effectiveLeadTimeDays` reports the maximum across allocated lines rather than the leader's, so a cheap split cannot quietly cost a week nobody agreed to. Sorting by lead time instead of price buys a faster split at a higher total, and the two results make that trade visible rather than assumed.
+
+### Still open
+
+The allocator never over-orders to satisfy a minimum order quantity, so a supplier whose minimum exceeds the remaining need is skipped and the shortfall is reported. Rounding a line up to reach a minimum would fill the need but spend money on stock nobody asked for, which is a purchasing decision rather than an allocation one.
+
+It also has no notion of a per-delivery cost. Once suppliers charge for delivery, a two-supplier split may cost more than a single more expensive supplier, and the greedy rule cannot see that.
