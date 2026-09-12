@@ -1,0 +1,199 @@
+â–¶ manual re-approval after reconnecting
+  âœ” binds the new approval to the state the server reports now (3.5308ms)
+  âœ” issues a different idempotency key once a bound fact has moved (0.48ms)
+  âœ” derives the same key from the same bound facts, so a retry cannot duplicate an order (1.1849ms)
+  âœ” gives two people approving the same state one key, not two orders (0.538ms)
+  âœ” separates keys across drafts, relationships and totals (0.4749ms)
+  âœ” produces a draft that then reconciles as submittable (0.7876ms)
+  âœ– refuses to re-approve a draft whose authorisation or quote is gone (4.3206ms)
+  âœ” refuses an approver or timestamp it cannot record (0.8479ms)
+âœ– manual re-approval after reconnecting (15.3032ms)
+â–¶ AC-012 offline draft reconnecting after a terms change
+  âœ” requires manual approval and exposes no way to submit (4.1549ms)
+âœ” AC-012 offline draft reconnecting after a terms change (8.3ms)
+â–¶ offline draft reconciliation
+  âœ” releases an unchanged approved draft with its original idempotency key (0.6332ms)
+  âœ” requires approval for a draft that was never approved (0.3292ms)
+  âœ” names each bound fact that moved while the device was offline (0.4853ms)
+  âœ” reports every reason at once rather than the first one found (0.3141ms)
+  âœ” blocks a draft whose authorisation no longer holds (0.4301ms)
+  âœ” blocks a draft whose quote can no longer be honoured (0.8185ms)
+  âœ” puts authorisation ahead of approval so a revoked user is never merely reprompted (0.3617ms)
+  âœ” refuses to release anything that is not submittable (2.044ms)
+âœ” offline draft reconciliation (6.984ms)
+â–¶ Arabic search normalisation
+  âœ” folds the alef variants a typist chooses between (2.2491ms)
+  âœ” folds teh marbuta and alef maqsura to their plain forms (0.3809ms)
+  âœ” strips decorative elongation and diacritics (0.3456ms)
+  âœ” reads Arabic-Indic and Persian digits as the numbers they are (0.5816ms)
+  âœ” folds Latin case and collapses runs of whitespace (0.5356ms)
+  âœ” lets two honest spellings of one product meet (0.5061ms)
+  âœ” is idempotent, so a normalised query can be normalised again (1.2051ms)
+  âœ” removes invisible characters that would split a search term (1.8854ms)
+  âœ” never produces something usable as an identity (1.0303ms)
+âœ” Arabic search normalisation (12.0459ms)
+â–¶ bidirectional control inspection
+  âœ” accepts plain Latin, plain Arabic and ordinary mixed text (7.9961ms)
+  âœ” reports which scripts a label actually mixes (0.8105ms)
+  âœ” does not mistake a byte order mark for right-to-left script (0.816ms)
+  âœ” refuses the directional overrides that make text read differently than it is (0.4564ms)
+  âœ” refuses isolates and invisible marks arriving in vendor data (3.3123ms)
+  âœ” refuses text beyond the inspection budget (0.3359ms)
+âœ” bidirectional control inspection (20.5465ms)
+â–¶ identifier display isolation
+  âœ” recovers the identifier exactly from its isolated form (4.9958ms)
+  âœ” keeps the identifier intact inside a right-to-left label (1.3354ms)
+  âœ” wraps with isolates rather than overrides, so nesting cannot leak (1.0041ms)
+  âœ” refuses to isolate something that is not a safe identifier (5.3833ms)
+âœ” identifier display isolation (16.6795ms)
+â–¶ identifier text safety
+  âœ” accepts opaque vendor codes in either script (1.0716ms)
+  âœ– refuses digits that only look like the digits they are not (7.1381ms)
+  âœ” refuses invisible characters that split one identity into two (0.7273ms)
+  âœ– refuses an empty or oversized identifier (4.5679ms)
+  âœ– refuses C0 and C1 control characters (3.8609ms)
+âœ– identifier text safety (18.8095ms)
+â–¶ untrusted XML inspection
+  âœ” accepts a declared UTF-8 document and reports its shape (4.351ms)
+  âœ” accepts comments, CDATA and self-closing elements without counting them as nesting (0.7153ms)
+  âœ” rejects any document type or entity declaration (1.304ms)
+  âœ” rejects entity expansion payloads regardless of nesting (3.1483ms)
+  âœ” rejects unknown named entity references while allowing predefined and numeric ones (4.5963ms)
+  âœ” rejects processing instructions other than the leading XML declaration (1.0519ms)
+  âœ” rejects XInclude external references (0.8571ms)
+  âœ” rejects encodings other than UTF-8 rather than scanning a partial view (3.3169ms)
+  âœ” accepts a UTF-8 byte order mark (2.3945ms)
+  âœ” bounds document size, nesting depth and element count (1.1397ms)
+  âœ– rejects unterminated and unbalanced markup instead of guessing (7.8543ms)
+âœ– untrusted XML inspection (41.8923ms)
+â„¹ tests 52
+â„¹ suites 8
+â„¹ pass 47
+â„¹ fail 5
+â„¹ cancelled 0
+â„¹ skipped 0
+â„¹ todo 0
+â„¹ duration_ms 461.434
+
+âœ– failing tests:
+
+test at packages\offline-draft\test\draft-reapproval.test.ts:109:3
+âœ– refuses to re-approve a draft whose authorisation or quote is gone (4.3206ms)
+  AssertionError [ERR_ASSERTION]: Expected values to be strictly equal:
+  + actual - expected
+
+  + 'approved'
+  - 'refused'
+
+      at refusal (file:///D:/Repos/PharmaCart/packages/offline-draft/test/draft-reapproval.test.ts:112:14)
+      at TestContext.<anonymous> (file:///D:/Repos/PharmaCart/packages/offline-draft/test/draft-reapproval.test.ts:120:18)
+      at Test.runInAsyncScope (node:async_hooks:227:14)
+      at Test.run (node:internal/test_runner/test:1382:25)
+      at Suite.processPendingSubtests (node:internal/test_runner/test:960:18)
+      at Test.postRun (node:internal/test_runner/test:1522:19)
+      at Test.run (node:internal/test_runner/test:1447:12)
+      at async Suite.processPendingSubtests (node:internal/test_runner/test:960:7) {
+    generatedMessage: true,
+    code: 'ERR_ASSERTION',
+    actual: 'approved',
+    expected: 'refused',
+    operator: 'strictEqual',
+    diff: 'simple'
+  }
+
+test at packages\text-identity\test\bidi-safety.test.ts:106:3
+âœ– refuses digits that only look like the digits they are not (7.1381ms)
+  AssertionError [ERR_ASSERTION]: expected rejection for "SKU-ï¼‘ï¼’ï¼“"
+  + actual - expected
+
+  + 'accepted'
+  - 'rejected'
+
+      at identifierRejection (file:///D:/Repos/PharmaCart/packages/text-identity/test/bidi-safety.test.ts:30:10)
+      at TestContext.<anonymous> (file:///D:/Repos/PharmaCart/packages/text-identity/test/bidi-safety.test.ts:109:18)
+      at Test.runInAsyncScope (node:async_hooks:227:14)
+      at Test.run (node:internal/test_runner/test:1382:25)
+      at Suite.processPendingSubtests (node:internal/test_runner/test:960:18)
+      at Test.postRun (node:internal/test_runner/test:1522:19)
+      at Test.run (node:internal/test_runner/test:1447:12)
+      at async Promise.all (index 0)
+      at async Suite.run (node:internal/test_runner/test:1869:7)
+      at async Test.processPendingSubtests (node:internal/test_runner/test:960:7) {
+    generatedMessage: false,
+    code: 'ERR_ASSERTION',
+    actual: 'accepted',
+    expected: 'rejected',
+    operator: 'strictEqual',
+    diff: 'simple'
+  }
+
+test at packages\text-identity\test\bidi-safety.test.ts:119:3
+âœ– refuses an empty or oversized identifier (4.5679ms)
+  AssertionError [ERR_ASSERTION]: Expected values to be strictly equal:
+  + actual - expected
+
+  + 'control_character'
+  - 'empty_identifier'
+
+      at TestContext.<anonymous> (file:///D:/Repos/PharmaCart/packages/text-identity/test/bidi-safety.test.ts:121:12)
+      at Test.runInAsyncScope (node:async_hooks:227:14)
+      at Test.run (node:internal/test_runner/test:1382:25)
+      at Suite.processPendingSubtests (node:internal/test_runner/test:960:18)
+      at Test.postRun (node:internal/test_runner/test:1522:19)
+      at Test.run (node:internal/test_runner/test:1447:12)
+      at async Suite.processPendingSubtests (node:internal/test_runner/test:960:7) {
+    generatedMessage: true,
+    code: 'ERR_ASSERTION',
+    actual: 'control_character',
+    expected: 'empty_identifier',
+    operator: 'strictEqual',
+    diff: 'simple'
+  }
+
+test at packages\text-identity\test\bidi-safety.test.ts:125:3
+âœ– refuses C0 and C1 control characters (3.8609ms)
+  AssertionError [ERR_ASSERTION]: expected rejection for "SKUÂ…-1"
+  + actual - expected
+
+  + 'accepted'
+  - 'rejected'
+
+      at identifierRejection (file:///D:/Repos/PharmaCart/packages/text-identity/test/bidi-safety.test.ts:30:10)
+      at TestContext.<anonymous> (file:///D:/Repos/PharmaCart/packages/text-identity/test/bidi-safety.test.ts:127:18)
+      at Test.runInAsyncScope (node:async_hooks:227:14)
+      at Test.run (node:internal/test_runner/test:1382:25)
+      at Suite.processPendingSubtests (node:internal/test_runner/test:960:18)
+      at Test.postRun (node:internal/test_runner/test:1522:19)
+      at Test.run (node:internal/test_runner/test:1447:12)
+      at async Suite.processPendingSubtests (node:internal/test_runner/test:960:7) {
+    generatedMessage: false,
+    code: 'ERR_ASSERTION',
+    actual: 'accepted',
+    expected: 'rejected',
+    operator: 'strictEqual',
+    diff: 'simple'
+  }
+
+test at packages\transport-safety\test\xml-safety.test.ts:108:3
+âœ– rejects unterminated and unbalanced markup instead of guessing (7.8543ms)
+  AssertionError [ERR_ASSERTION]: expected rejection for "<stock></inventory>"
+  + actual - expected
+
+  + 'accepted'
+  - 'rejected'
+
+      at rejectionReason (file:///D:/Repos/PharmaCart/packages/transport-safety/test/xml-safety.test.ts:14:10)
+      at TestContext.<anonymous> (file:///D:/Repos/PharmaCart/packages/transport-safety/test/xml-safety.test.ts:113:18)
+      at Test.runInAsyncScope (node:async_hooks:227:14)
+      at Test.run (node:internal/test_runner/test:1382:25)
+      at Suite.processPendingSubtests (node:internal/test_runner/test:960:18)
+      at Test.postRun (node:internal/test_runner/test:1522:19)
+      at Test.run (node:internal/test_runner/test:1447:12)
+      at async Suite.processPendingSubtests (node:internal/test_runner/test:960:7) {
+    generatedMessage: false,
+    code: 'ERR_ASSERTION',
+    actual: 'accepted',
+    expected: 'rejected',
+    operator: 'strictEqual',
+    diff: 'simple'
+  }

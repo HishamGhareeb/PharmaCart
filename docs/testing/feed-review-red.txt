@@ -1,0 +1,194 @@
+â–¶ delimited feed ingestion
+  âœ– carries a dropped file all the way to an event the domain accepts (5.6357ms)
+  âœ– unwraps a compressed drop within its budget (1.5913ms)
+  âœ” declares the order its guards run in (1.0559ms)
+âœ– delimited feed ingestion (10.1032ms)
+â–¶ ingestion refuses at the earliest stage that can see the problem
+  âœ” never opens a file whose path escapes the drop root (0.9166ms)
+  âœ” surfaces a failed read as its own stage rather than an empty feed (0.6284ms)
+  âœ– rejects a reader result that exceeds the declared input budget (1.4145ms)
+  âœ– refuses a decompression bomb before anything tries to parse it (48.3446ms)
+  âœ– refuses a formula payload at the parse edge (1.1332ms)
+  âœ– refuses a unit the contract never declared at the adapter (0.9087ms)
+  âœ– refuses a source code that would read differently than it is stored (1.2346ms)
+âœ– ingestion refuses at the earliest stage that can see the problem (55.7634ms)
+file:///D:/Repos/PharmaCart/packages/transport-safety/test/path-boundary.test.ts:11
+  readContainedFileWithinRoot,
+  ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+SyntaxError: The requested module '../src/path-boundary.ts' does not provide an export named 'readContainedFileWithinRoot'
+    at #asyncInstantiate (node:internal/modules/esm/module_job:327:21)
+    at async ModuleJob.run (node:internal/modules/esm/module_job:431:5)
+    at async node:internal/modules/esm/loader:643:26
+    at async asyncRunEntryPointWithESMLoader (node:internal/modules/run_main:101:5)
+
+Node.js v24.19.0
+Assertion failed: !(handle->flags & UV_HANDLE_CLOSING), file src\win\async.c, line 94
+âœ– packages\transport-safety\test\path-boundary.test.ts (300.8782ms)
+â„¹ tests 11
+â„¹ suites 2
+â„¹ pass 3
+â„¹ fail 8
+â„¹ cancelled 0
+â„¹ skipped 0
+â„¹ todo 0
+â„¹ duration_ms 341.7672
+
+âœ– failing tests:
+
+test at packages\feed-ingestion\test\ingest-delimited-feed.test.ts:73:3
+âœ– carries a dropped file all the way to an event the domain accepts (5.6357ms)
+  AssertionError [ERR_ASSERTION]: read_failed
+  + actual - expected
+
+  + 'rejected'
+  - 'accepted'
+
+      at TestContext.<anonymous> (file:///D:/Repos/PharmaCart/packages/feed-ingestion/test/ingest-delimited-feed.test.ts:77:12)
+      at async Test.run (node:internal/test_runner/test:1389:7)
+      at async Promise.all (index 0)
+      at async Suite.run (node:internal/test_runner/test:1869:7)
+      at async startSubtestAfterBootstrap (node:internal/test_runner/harness:387:3) {
+    generatedMessage: false,
+    code: 'ERR_ASSERTION',
+    actual: 'rejected',
+    expected: 'accepted',
+    operator: 'strictEqual',
+    diff: 'simple'
+  }
+
+test at packages\feed-ingestion\test\ingest-delimited-feed.test.ts:88:3
+âœ– unwraps a compressed drop within its budget (1.5913ms)
+  AssertionError [ERR_ASSERTION]: read_failed
+  + actual - expected
+
+  + 'rejected'
+  - 'accepted'
+
+      at TestContext.<anonymous> (file:///D:/Repos/PharmaCart/packages/feed-ingestion/test/ingest-delimited-feed.test.ts:91:12)
+      at async Test.run (node:internal/test_runner/test:1389:7)
+      at async Suite.processPendingSubtests (node:internal/test_runner/test:960:7) {
+    generatedMessage: false,
+    code: 'ERR_ASSERTION',
+    actual: 'rejected',
+    expected: 'accepted',
+    operator: 'strictEqual',
+    diff: 'simple'
+  }
+
+test at packages\feed-ingestion\test\ingest-delimited-feed.test.ts:118:3
+âœ– rejects a reader result that exceeds the declared input budget (1.4145ms)
+  AssertionError [ERR_ASSERTION]: Expected values to be strictly deep-equal:
+  + actual - expected
+
+    {
+  +   reason: 'read_failed',
+  -   reason: 'input_too_large',
+      stage: 'read'
+    }
+
+      at TestContext.<anonymous> (file:///D:/Repos/PharmaCart/packages/feed-ingestion/test/ingest-delimited-feed.test.ts:123:12)
+      at async Test.run (node:internal/test_runner/test:1389:7)
+      at async Suite.processPendingSubtests (node:internal/test_runner/test:960:7) {
+    generatedMessage: true,
+    code: 'ERR_ASSERTION',
+    actual: { stage: 'read', reason: 'read_failed' },
+    expected: { stage: 'read', reason: 'input_too_large' },
+    operator: 'deepStrictEqual',
+    diff: 'simple'
+  }
+
+test at packages\feed-ingestion\test\ingest-delimited-feed.test.ts:126:3
+âœ– refuses a decompression bomb before anything tries to parse it (48.3446ms)
+  AssertionError [ERR_ASSERTION]: Expected values to be strictly deep-equal:
+  + actual - expected
+
+    {
+  +   reason: 'read_failed',
+  +   stage: 'read'
+  -   reason: 'output_too_large',
+  -   stage: 'decompression'
+    }
+
+      at TestContext.<anonymous> (file:///D:/Repos/PharmaCart/packages/feed-ingestion/test/ingest-delimited-feed.test.ts:132:12)
+      at async Test.run (node:internal/test_runner/test:1389:7)
+      at async Suite.processPendingSubtests (node:internal/test_runner/test:960:7) {
+    generatedMessage: true,
+    code: 'ERR_ASSERTION',
+    actual: { stage: 'read', reason: 'read_failed' },
+    expected: { stage: 'decompression', reason: 'output_too_large' },
+    operator: 'deepStrictEqual',
+    diff: 'simple'
+  }
+
+test at packages\feed-ingestion\test\ingest-delimited-feed.test.ts:135:3
+âœ– refuses a formula payload at the parse edge (1.1332ms)
+  AssertionError [ERR_ASSERTION]: Expected values to be strictly deep-equal:
+  + actual - expected
+
+    {
+  +   reason: 'read_failed',
+  +   stage: 'read'
+  -   reason: 'unsafe_cell',
+  -   stage: 'parse'
+    }
+
+      at TestContext.<anonymous> (file:///D:/Repos/PharmaCart/packages/feed-ingestion/test/ingest-delimited-feed.test.ts:138:12)
+      at async Test.run (node:internal/test_runner/test:1389:7)
+      at async Suite.processPendingSubtests (node:internal/test_runner/test:960:7) {
+    generatedMessage: true,
+    code: 'ERR_ASSERTION',
+    actual: { stage: 'read', reason: 'read_failed' },
+    expected: { stage: 'parse', reason: 'unsafe_cell' },
+    operator: 'deepStrictEqual',
+    diff: 'simple'
+  }
+
+test at packages\feed-ingestion\test\ingest-delimited-feed.test.ts:141:3
+âœ– refuses a unit the contract never declared at the adapter (0.9087ms)
+  AssertionError [ERR_ASSERTION]: Expected values to be strictly deep-equal:
+  + actual - expected
+
+    {
+  +   reason: 'read_failed',
+  +   stage: 'read'
+  -   reason: 'unknown_unit',
+  -   stage: 'adapt'
+    }
+
+      at TestContext.<anonymous> (file:///D:/Repos/PharmaCart/packages/feed-ingestion/test/ingest-delimited-feed.test.ts:144:12)
+      at async Test.run (node:internal/test_runner/test:1389:7)
+      at async Suite.processPendingSubtests (node:internal/test_runner/test:960:7) {
+    generatedMessage: true,
+    code: 'ERR_ASSERTION',
+    actual: { stage: 'read', reason: 'read_failed' },
+    expected: { stage: 'adapt', reason: 'unknown_unit' },
+    operator: 'deepStrictEqual',
+    diff: 'simple'
+  }
+
+test at packages\feed-ingestion\test\ingest-delimited-feed.test.ts:147:3
+âœ– refuses a source code that would read differently than it is stored (1.2346ms)
+  AssertionError [ERR_ASSERTION]: Expected values to be strictly deep-equal:
+  + actual - expected
+
+    {
+  +   reason: 'read_failed',
+  +   stage: 'read'
+  -   reason: 'unsafe_identifier',
+  -   stage: 'adapt'
+    }
+
+      at TestContext.<anonymous> (file:///D:/Repos/PharmaCart/packages/feed-ingestion/test/ingest-delimited-feed.test.ts:150:12)
+      at async Test.run (node:internal/test_runner/test:1389:7)
+      at async Suite.processPendingSubtests (node:internal/test_runner/test:960:7) {
+    generatedMessage: true,
+    code: 'ERR_ASSERTION',
+    actual: { stage: 'read', reason: 'read_failed' },
+    expected: { stage: 'adapt', reason: 'unsafe_identifier' },
+    operator: 'deepStrictEqual',
+    diff: 'simple'
+  }
+
+test at packages\transport-safety\test\path-boundary.test.ts:1:1
+âœ– packages\transport-safety\test\path-boundary.test.ts (300.8782ms)
+  'test failed'

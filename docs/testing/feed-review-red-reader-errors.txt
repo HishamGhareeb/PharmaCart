@@ -1,0 +1,56 @@
+▶ delimited feed ingestion
+  ✔ carries a dropped file all the way to an event the domain accepts (9.5742ms)
+  ✔ unwraps a compressed drop within its budget (3.2119ms)
+  ✔ declares the order its guards run in (0.2585ms)
+✔ delimited feed ingestion (15.5586ms)
+▶ ingestion refuses at the earliest stage that can see the problem
+  ✔ never opens a file whose path escapes the drop root (0.8123ms)
+  ✔ surfaces a failed read as its own stage rather than an empty feed (0.4638ms)
+  ✖ turns an unexpected reader exception into the stable read refusal (0.8002ms)
+  ✔ rejects a reader result that exceeds the declared input budget (0.5451ms)
+  ✔ refuses a decompression bomb before anything tries to parse it (39.9435ms)
+  ✔ refuses a formula payload at the parse edge (0.6973ms)
+  ✔ refuses a unit the contract never declared at the adapter (0.5828ms)
+  ✔ refuses a source code that would read differently than it is stored (0.4629ms)
+✖ ingestion refuses at the earliest stage that can see the problem (45.3611ms)
+▶ allowlisted root containment
+  ✔ accepts a nested relative path and resolves it inside the root (2.4033ms)
+  ✔ rejects parent traversal expressed with forward or backward separators (1.8029ms)
+  ✔ rejects absolute, drive-qualified and UNC paths (0.4032ms)
+  ✔ rejects null bytes and control characters used to truncate or forge names (0.3423ms)
+  ✔ rejects Windows reserved device names with or without an extension (0.3493ms)
+  ✔ rejects alternate data streams, trailing dots and trailing spaces (0.2549ms)
+  ✔ rejects empty input, empty segments and oversized names (0.3338ms)
+  ✔ treats a sibling directory sharing the root prefix as outside the root (0.3648ms)
+✔ allowlisted root containment (9.0991ms)
+▶ symlink-aware root containment
+  ✔ accepts a real file inside the root and a not-yet-created sibling (3.9118ms)
+  ✔ rejects a symlink that escapes the root (3.8743ms)
+  ✔ does not read through a symlink that escapes the root (4.384ms)
+  ✔ stops reading when a file exceeds its byte budget (3.856ms)
+  ✔ rejects a directory instead of treating it as feed bytes (1.5483ms)
+  ✔ rejects string-level hostile input before touching the filesystem (0.3581ms)
+✔ symlink-aware root containment (45.0538ms)
+ℹ tests 25
+ℹ suites 4
+ℹ pass 24
+ℹ fail 1
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 307.4636
+
+✖ failing tests:
+
+test at packages\feed-ingestion\test\ingest-delimited-feed.test.ts:123:3
+✖ turns an unexpected reader exception into the stable read refusal (0.8002ms)
+  Error: synthetic reader failure
+      at Object.readContained (file:///D:/Repos/PharmaCart/packages/feed-ingestion/test/ingest-delimited-feed.test.ts:126:15)
+      at ingestDelimitedFeed (file:///D:/Repos/PharmaCart/packages/feed-ingestion/src/ingest-delimited-feed.ts:61:29)
+      at TestContext.<anonymous> (file:///D:/Repos/PharmaCart/packages/feed-ingestion/test/ingest-delimited-feed.test.ts:124:26)
+      at Test.runInAsyncScope (node:async_hooks:227:14)
+      at Test.run (node:internal/test_runner/test:1382:25)
+      at Suite.processPendingSubtests (node:internal/test_runner/test:960:18)
+      at Test.postRun (node:internal/test_runner/test:1522:19)
+      at Test.run (node:internal/test_runner/test:1447:12)
+      at async Suite.processPendingSubtests (node:internal/test_runner/test:960:7)

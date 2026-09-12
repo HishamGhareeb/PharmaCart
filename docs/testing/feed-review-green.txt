@@ -1,0 +1,41 @@
+▶ delimited feed ingestion
+  ✔ carries a dropped file all the way to an event the domain accepts (7.3519ms)
+  ✔ unwraps a compressed drop within its budget (2.3564ms)
+  ✔ declares the order its guards run in (0.235ms)
+✔ delimited feed ingestion (12.3742ms)
+▶ ingestion refuses at the earliest stage that can see the problem
+  ✔ never opens a file whose path escapes the drop root (0.6777ms)
+  ✔ surfaces a failed read as its own stage rather than an empty feed (0.2984ms)
+  ✔ turns an unexpected reader exception into the stable read refusal (0.4015ms)
+  ✔ rejects a reader result that exceeds the declared input budget (0.5699ms)
+  ✔ refuses a decompression bomb before anything tries to parse it (39.5799ms)
+  ✔ refuses a formula payload at the parse edge (0.5398ms)
+  ✔ refuses a unit the contract never declared at the adapter (0.4654ms)
+  ✔ refuses a source code that would read differently than it is stored (0.4448ms)
+✔ ingestion refuses at the earliest stage that can see the problem (43.7884ms)
+▶ allowlisted root containment
+  ✔ accepts a nested relative path and resolves it inside the root (2.4333ms)
+  ✔ rejects parent traversal expressed with forward or backward separators (0.5704ms)
+  ✔ rejects absolute, drive-qualified and UNC paths (0.4497ms)
+  ✔ rejects null bytes and control characters used to truncate or forge names (0.2957ms)
+  ✔ rejects Windows reserved device names with or without an extension (0.3849ms)
+  ✔ rejects alternate data streams, trailing dots and trailing spaces (0.2849ms)
+  ✔ rejects empty input, empty segments and oversized names (0.4303ms)
+  ✔ treats a sibling directory sharing the root prefix as outside the root (0.3904ms)
+✔ allowlisted root containment (9.1867ms)
+▶ symlink-aware root containment
+  ✔ accepts a real file inside the root and a not-yet-created sibling (3.5395ms)
+  ✔ rejects a symlink that escapes the root (2.6733ms)
+  ✔ does not read through a symlink that escapes the root (3.658ms)
+  ✔ stops reading when a file exceeds its byte budget (3.3815ms)
+  ✔ rejects a directory instead of treating it as feed bytes (1.0383ms)
+  ✔ rejects string-level hostile input before touching the filesystem (0.2921ms)
+✔ symlink-aware root containment (35.9224ms)
+ℹ tests 25
+ℹ suites 4
+ℹ pass 25
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 273.6438

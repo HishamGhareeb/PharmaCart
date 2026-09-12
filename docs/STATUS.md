@@ -2,7 +2,7 @@
 
 Date: 2026-09-12. Current implementation status; historical evidence is under docs/testing.
 
-Latest B3 verification: 96 tests pass (77 unit/contract and 19 PostgreSQL integration). Combined coverage: 94.92% lines, 84.14% branches, 91.98% functions. Type checking, lint, generated contracts and build passed during this slice. Ten migrations are applied locally. See testing/b3-progress.md.
+Latest combined verification: 343 tests pass (324 unit/contract and 19 PostgreSQL integration). Coverage: 96.27% lines, 88.88% branches, 94.95% functions. Type checking, lint, generated contracts and build passed during this slice. Ten migrations are applied locally. See testing/b3-progress.md.
 
 ## Delivered implementation
 
@@ -17,10 +17,10 @@ AC-001 through AC-018 remain NOT RUN as complete acceptance gates. The integrati
 
 Commercial fixtures currently use EGP cash, a named tax-exempt pricing rule and a five-minute quote lifetime. Mapping administration and supplier selection policies are not integrated. Partial-need fulfilment and cross-branch idempotency key collision handling require further review before claiming B2 complete. Open commitments and unknown-outcome replenishment policy remain to be enforced. Local OIDC uses development interactions and ephemeral keys.
 
-Claude's domain packages are awaiting reviewed integration on this branch. Their pure tests alone will not advance acceptance status.
+Claude's 13 domain packages are merged with reviewed feed read-boundary and refusal corrections. The final combined tree passes 343 tests. The packages remain unconnected to runtime request/worker paths; their pure tests alone do not advance acceptance status. Review and retained RED/GREEN evidence: testing/domain-merge-review.md.
 
 ## Team and next work
 
-GPT-6 Astra coordinates and reviews. Three GPT-5.6 Sol workstreams exhausted capacity; Astra completed interrupted integration locally. No reset credits or paid services were used.
+GPT-6 Astra coordinates and reviews. Three earlier GPT-5.6 Sol workstreams exhausted capacity; Astra completed interrupted integration locally. Fresh Sol capacity is now available: two bounded agents are reviewing and fixing the domain merge with exclusive ownership. No reset credits or paid services were used.
 
-Next: commit B3, review and merge claude/domain-packages, verify the combined tree, then enforce installation lifecycle at the request boundary and connect guarded feed ingestion to a real worker. Preserve the transactional feed watermark and treat insufficient supplier samples as unrated.
+Next: enforce installation lifecycle at the request boundary and connect guarded feed ingestion to a real worker. Commercial policy hardening is assigned to Claude on a separate worktree/branch; do not overlap those four packages. Preserve the transactional feed watermark and treat insufficient supplier samples as unrated.

@@ -1,0 +1,76 @@
+▶ manual re-approval after reconnecting
+  ✔ binds the new approval to the state the server reports now (2.4488ms)
+  ✔ issues a different idempotency key once a bound fact has moved (0.4386ms)
+  ✔ derives the same key from the same bound facts, so a retry cannot duplicate an order (0.3847ms)
+  ✔ gives two people approving the same state one key, not two orders (0.3985ms)
+  ✔ separates keys across drafts, relationships and totals (0.463ms)
+  ✔ produces a draft that then reconciles as submittable (0.5679ms)
+  ✔ refuses to re-approve a draft whose authorisation or quote is gone (0.3968ms)
+  ✔ refuses an approver or timestamp it cannot record (0.3126ms)
+✔ manual re-approval after reconnecting (8.1166ms)
+▶ AC-012 offline draft reconnecting after a terms change
+  ✔ requires manual approval and exposes no way to submit (5.0098ms)
+✔ AC-012 offline draft reconnecting after a terms change (8.0219ms)
+▶ offline draft reconciliation
+  ✔ releases an unchanged approved draft with its original idempotency key (0.704ms)
+  ✔ requires approval for a draft that was never approved (0.3221ms)
+  ✔ names each bound fact that moved while the device was offline (0.5969ms)
+  ✔ reports every reason at once rather than the first one found (0.5418ms)
+  ✔ blocks a draft whose authorisation no longer holds (0.7635ms)
+  ✔ blocks a draft whose quote can no longer be honoured (0.6917ms)
+  ✔ puts authorisation ahead of approval so a revoked user is never merely reprompted (0.6028ms)
+  ✔ refuses to release anything that is not submittable (1.9069ms)
+✔ offline draft reconciliation (9.3975ms)
+▶ Arabic search normalisation
+  ✔ folds the alef variants a typist chooses between (2.9177ms)
+  ✔ folds teh marbuta and alef maqsura to their plain forms (0.3546ms)
+  ✔ strips decorative elongation and diacritics (0.3329ms)
+  ✔ reads Arabic-Indic and Persian digits as the numbers they are (0.5698ms)
+  ✔ folds Latin case and collapses runs of whitespace (0.3121ms)
+  ✔ lets two honest spellings of one product meet (0.455ms)
+  ✔ is idempotent, so a normalised query can be normalised again (0.7978ms)
+  ✔ removes invisible characters that would split a search term (4.802ms)
+  ✔ never produces something usable as an identity (1.8549ms)
+✔ Arabic search normalisation (15.8821ms)
+▶ bidirectional control inspection
+  ✔ accepts plain Latin, plain Arabic and ordinary mixed text (2.7054ms)
+  ✔ reports which scripts a label actually mixes (0.4876ms)
+  ✔ does not mistake a byte order mark for right-to-left script (0.3231ms)
+  ✔ refuses the directional overrides that make text read differently than it is (0.5599ms)
+  ✔ refuses isolates and invisible marks arriving in vendor data (0.4104ms)
+  ✔ refuses text beyond the inspection budget (1.7968ms)
+✔ bidirectional control inspection (10.2448ms)
+▶ identifier display isolation
+  ✔ recovers the identifier exactly from its isolated form (1.8777ms)
+  ✔ keeps the identifier intact inside a right-to-left label (0.6515ms)
+  ✔ wraps with isolates rather than overrides, so nesting cannot leak (0.5532ms)
+  ✔ refuses to isolate something that is not a safe identifier (2.8972ms)
+✔ identifier display isolation (7.2822ms)
+▶ identifier text safety
+  ✔ accepts opaque vendor codes in either script (0.7018ms)
+  ✔ refuses digits that only look like the digits they are not (0.368ms)
+  ✔ refuses invisible characters that split one identity into two (0.2484ms)
+  ✔ refuses an empty or oversized identifier (0.2423ms)
+  ✔ refuses C0 and C1 control characters (0.2516ms)
+✔ identifier text safety (2.4457ms)
+▶ untrusted XML inspection
+  ✔ accepts a declared UTF-8 document and reports its shape (2.9004ms)
+  ✔ accepts comments, CDATA and self-closing elements without counting them as nesting (0.509ms)
+  ✔ rejects any document type or entity declaration (0.4284ms)
+  ✔ rejects entity expansion payloads regardless of nesting (0.2755ms)
+  ✔ rejects unknown named entity references while allowing predefined and numeric ones (0.5668ms)
+  ✔ rejects processing instructions other than the leading XML declaration (0.3829ms)
+  ✔ rejects XInclude external references (0.2835ms)
+  ✔ rejects encodings other than UTF-8 rather than scanning a partial view (0.6065ms)
+  ✔ accepts a UTF-8 byte order mark (0.3778ms)
+  ✔ bounds document size, nesting depth and element count (0.724ms)
+  ✔ rejects unterminated and unbalanced markup instead of guessing (0.3883ms)
+✔ untrusted XML inspection (11.546ms)
+ℹ tests 52
+ℹ suites 8
+ℹ pass 52
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 367.9975
