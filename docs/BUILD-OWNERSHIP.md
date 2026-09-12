@@ -4,7 +4,9 @@
 
 GPT-6 Astra coordinates this build: architecture, shared contracts, dependency sequencing, integration review, and acceptance decisions.
 
-GPT-5.6 Sol implements bounded tasks with exclusive file ownership:
+User allocation updated 2026-09-12: Claude Code is the implementation builder, with Opus 5 as the default. Use Fable sparingly for unusually complex work. Astra retains architecture, review, verification and integration. Run Claude builders in isolated worktrees with exclusive file ownership; review every diff before integration. Earlier Sol contributions below are historical.
+
+Bounded implementation responsibilities:
 - Contracts and domain: canonical schemas, money and units, quote and order rules.
 - Database and API: migrations, tenant policies, repositories and validated routes after contracts are agreed.
 - Connectors and worker: synthetic supplier, inbox/outbox and uncertain-outcome recovery.
