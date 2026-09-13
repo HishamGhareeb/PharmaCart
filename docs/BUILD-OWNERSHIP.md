@@ -39,7 +39,7 @@ Use invented product/account data. External purchasing, production changes, publ
 
 ## Active Claude builder lanes
 
-Run at most three coordinator-managed Claude sessions concurrently. Default model ID: `claude-opus-5` (verified directly; the `opus` alias currently resolves to a different version). Use direct prompt arguments and streaming JSON so tool progress and errors remain observable. Do not silently substitute a model.
+Run at most ten coordinator-managed Claude sessions concurrently (user update 2026-09-13). Default model ID: `claude-opus-5` (verified directly; the `opus` alias currently resolves to a different version). Use direct prompt arguments and streaming JSON so tool progress and errors remain observable. Do not silently substitute a model.
 
 | Branch | Exclusive implementation ownership | Integration gate |
 | --- | --- | --- |
@@ -47,4 +47,7 @@ Run at most three coordinator-managed Claude sessions concurrently. Default mode
 | claude/procurement-invariants | db procurement source, optional migration 0012, new procurement invariant tests | Astra review, sequential PostgreSQL tests |
 | claude/order-recovery-hardening | db orders source, synthetic supplier source, new recovery/fake concurrency tests | Astra review, sequential PostgreSQL tests |
 
-Claude's separate commercial-policy worktree is outside these three managed lanes; leave its four policy packages untouched. Do not start a duplicate commercial task. Builders do not run shared database resets, commit, push or integrate one another's work. Coordinator reviews and integrates each completed result before assigning that lane another bounded task. Next queued work after these prerequisites: guarded drop-directory ingestion with an atomic watermark, then acceptance evidence for the authenticated synthetic loop. Fable is reserved for a concrete complexity need, not routine work.
+Claude's separate commercial-policy worktree is outside these managed lanes; leave its four policy packages untouched. Do not start a duplicate commercial task. Builders do not run shared database resets, commit, push or integrate one another's work. Coordinator reviews and integrates each completed result before assigning that lane another bounded task. Next queued work after these prerequisites: guarded drop-directory ingestion with an atomic watermark, then acceptance evidence for the authenticated synthetic loop. Fable is reserved for a concrete complexity need, not routine work.
+
+
+The next ten implementation lanes start from 9584ace: guarded feed worker (inventory/feed, migration 0013); need commitments (need reconciliation/procurement, 0014); OpenAPI response contracts; manual pack mapping (new mapping modules, 0015); local web flow (apps/web and additional local OIDC client); local verification runner; tenant list API modules; synthetic alert delivery (new notification modules, 0016); durable SQLite offline queue; synthetic receipt writeback (new writeback modules, 0017). Their prompts under ignored tmp define exact file ownership. Coordinator owns registration hooks, root scripts and cross-lane integration. Follow RELEASE-GATE.md before claiming deployment readiness.
