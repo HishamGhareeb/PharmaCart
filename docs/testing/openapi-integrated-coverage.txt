@@ -1,0 +1,676 @@
+
+> pharmacart@0.0.0 test:coverage
+> node --experimental-strip-types --experimental-test-coverage --test-coverage-exclude=**/test/** --test-coverage-exclude=**/*.test.ts --test-coverage-lines=80 --test-coverage-functions=80 --test-coverage-branches=80 --test --test-concurrency=1 packages/contracts/test/*.test.ts packages/test-fixtures/test/*.test.ts packages/domain/test/*.test.ts packages/auth/test/*.test.ts apps/api/test/*.test.ts infra/oidc/provider.test.ts packages/db/test/*.test.mjs packages/db/test/*.test.ts packages/transport-safety/test/*.test.ts packages/transport-adapters/test/*.test.ts packages/alerting/test/*.test.ts packages/offline-draft/test/*.test.ts packages/text-identity/test/*.test.ts packages/exact-decimal/test/*.test.ts packages/supply-ranking/test/*.test.ts packages/installation-lifecycle/test/*.test.ts packages/feed-ingestion/test/*.test.ts packages/feed-identity/test/*.test.ts packages/need-derivation/test/*.test.ts packages/coverage-target/test/*.test.ts packages/supplier-performance/test/*.test.ts packages/supplier/test/*.test.ts
+
+✔ GET /health reports the API as healthy and includes a generated correlation UUID (146.5914ms)
+✔ a valid client correlation UUID is retained (6.2665ms)
+✔ an invalid client correlation value is replaced and never reflected (5.6201ms)
+✔ unknown routes use the stable error envelope and correlation header (7.3452ms)
+✔ malformed JSON is rejected at the request boundary without leaking parser details (9.5965ms)
+✔ schema validation rejects unknown command properties without echoing values (61.6745ms)
+✔ oversized bodies are rejected with the documented 413 boundary error (5.1295ms)
+✔ unsupported request media types receive a stable redacted response (4.6767ms)
+✔ unexpected errors are redacted behind one stable internal error (5.8848ms)
+✔ OpenAPI endpoint serves the canonical implemented health contract (151.3783ms)
+▶ served responses satisfy the generated contracts
+  ✔ the served document is the generated artifact and satisfies its own contract (190.0965ms)
+  ✔ the health response satisfies the documented health contract (13.8771ms)
+  ✔ buildApp serves exactly the unauthenticated operations and refuses the tenant paths (22.3111ms)
+  ✔ boundary failures keep satisfying the documented error envelope (13.7682ms)
+✔ served responses satisfy the generated contracts (242.6811ms)
+oidc-provider WARNING: a quick start development-only in-memory adapter is used, you MUST change it in order to not lose all stateful provider data upon restart and to be able to share these between processes
+oidc-provider WARNING: a quick start development-only feature devInteractions is enabled, you are expected to disable these interactions and provide your own
+▶ local OIDC provider
+  ✔ exposes OIDC discovery for the synthetic PKCE client (79.4477ms)
+  ✔ refuses non-loopback issuers (0.7082ms)
+  ✔ refuses to run in production mode (0.1927ms)
+✔ local OIDC provider (83.5061ms)
+▶ AC-017 repeated alerts during quiet hours
+  ✔ yields one episode, one deferred delivery and no sensitive payload (25.5848ms)
+✔ AC-017 repeated alerts during quiet hours (28.1551ms)
+▶ alert episode coalescing
+  ✔ opens one episode and schedules one delivery for the first signal (2.3543ms)
+  ✔ coalesces a repeat into the open episode without a second push (2.3324ms)
+  ✔ treats a replayed signal identity as a duplicate and changes nothing (2.4799ms)
+  ✔ refuses a reused signal identity carrying different content (2.8375ms)
+  ✔ keeps separate episodes per condition and per installation (5.5258ms)
+  ✔ raises episode severity on escalation without pushing again (2.0846ms)
+✔ alert episode coalescing (18.0696ms)
+▶ alert episode lifecycle and policy
+  ✔ opens a new episode and a new delivery after the condition resolves (4.0192ms)
+  ✔ leaves an unknown condition untouched when resolving (1.9085ms)
+  ✔ delivers an overriding severity immediately through the quiet window (0.3753ms)
+  ✔ records the episode even when the policy permits no delivery window (11.3659ms)
+  ✔ refuses a signal that cannot identify or time itself (0.3487ms)
+✔ alert episode lifecycle and policy (18.4195ms)
+▶ quiet hours scheduling
+  ✔ delivers immediately outside the quiet window (27.022ms)
+  ✔ defers to the end of a window that crosses midnight (4.9299ms)
+  ✔ defers to the end of a window inside a single day (0.4882ms)
+  ✔ follows the local offset rather than a fixed one (0.6096ms)
+  ✔ skips a local time that daylight saving removes from the calendar (0.6936ms)
+  ✔ always defers to an instant that is itself outside the window (5.4223ms)
+  ✔ lets an overriding severity through the window without rescheduling (0.3589ms)
+  ✔ treats an empty window as no quiet hours at all (0.4737ms)
+  ✔ reports a whole-day quiet policy rather than delivering anyway (11.1748ms)
+  ✔ refuses an unusable policy or instant instead of guessing a local time (0.4774ms)
+✔ quiet hours scheduling (54.1826ms)
+oidc-provider WARNING: a quick start development-only in-memory adapter is used, you MUST change it in order to not lose all stateful provider data upon restart and to be able to share these between processes
+oidc-provider WARNING: a quick start development-only feature devInteractions is enabled, you are expected to disable these interactions and provide your own
+oidc-provider NOTICE: default ttl.Interaction function called, you SHOULD change it in order to define the expiration for Interaction artifacts.
+oidc-provider NOTICE: default ttl.Session function called, you SHOULD change it in order to define the expiration for Session artifacts.
+oidc-provider NOTICE: default ttl.Grant function called, you SHOULD change it in order to define the expiration for Grant artifacts.
+oidc-provider NOTICE: default ttl.AccessToken function called, you SHOULD change it in order to define the expiration for AccessToken artifacts.
+oidc-provider NOTICE: default ttl.IdToken function called, you SHOULD change it in order to define the expiration for IdToken artifacts.
+✔ local OIDC authorization code with PKCE yields a verifiable API access token (320.2824ms)
+▶ access token verification
+  ✔ returns a minimal verified principal for a valid RS256 access token (44.5307ms)
+  ✔ rejects a token with expired (6.4953ms)
+  ✔ rejects a token with wrong issuer (8.7013ms)
+  ✔ rejects a token with wrong audience (15.4801ms)
+  ✔ rejects a token with missing subject (15.8894ms)
+  ✔ rejects a token with missing issued-at (15.5381ms)
+  ✔ rejects a token with ID token type (15.5218ms)
+  ✔ rejects an unsigned token (0.9073ms)
+  ✔ rejects configuration without an explicit JWKS endpoint (0.3482ms)
+✔ access token verification (166.0584ms)
+▶ approval command validation
+  ✔ accepts exactly a positive safe integer quoteVersion (1.9968ms)
+  ✔ rejects null, arrays, and primitive bodies (0.2238ms)
+  ✔ rejects missing and unknown properties (0.1344ms)
+  ✔ rejects non-positive, fractional, and unsafe versions (0.2041ms)
+✔ approval command validation (4.4015ms)
+▶ canonical decimal strings
+  ✔ accepts canonical integers and fractions including a negative fraction (1.4537ms)
+  ✔ rejects non-strings and noncanonical spellings (0.1962ms)
+  ✔ enforces the default length bound before attempting validation (0.2052ms)
+  ✔ allows callers to choose a smaller positive length bound (0.6174ms)
+  ✔ nonnegative refinement accepts zero and rejects negative values (0.1514ms)
+  ✔ positive refinement rejects zero and negative values (1.1733ms)
+✔ canonical decimal strings (5.879ms)
+▶ OpenAPI success response contracts
+  ✔ every operation names a concrete success contract instead of a generic object (2.9968ms)
+  ✔ named success contracts refuse unknown top level fields (0.2304ms)
+  ✔ the common error envelope stays strict while the code stays extensible (61.7218ms)
+  ✔ every response keeps the redacted error set and the correlation header (1.0094ms)
+  ✔ security, scope headers and request bodies are preserved (0.774ms)
+  ✔ health and the served document validate their own contracts (6.7087ms)
+  ✔ tenant context publishes the resolved role and branch scope only (4.9803ms)
+  ✔ need view reports the outstanding remainder as stored numeric text (2.9017ms)
+  ✔ inventory acceptance echoes the durable outcome of the event (2.9319ms)
+  ✔ quote publishes binding commercial terms with canonical decimal strings (14.0223ms)
+  ✔ approval result names the approval and every queued order intent (4.4767ms)
+  ✔ order detail carries per line quantities and the uncertainty shape (16.7027ms)
+  ✔ receipt acknowledgement returns the stable receipt identity only (1.4715ms)
+  ✔ documented enumerations match the immutable migration constraints (4.9533ms)
+✔ OpenAPI success response contracts (128.278ms)
+▶ canonical schema generation
+  ✔ draft 2020-12 schemas are strict and generated artifacts are current (191.4318ms)
+  ✔ generated artifact records a deterministic SHA-256 source hash (1.2513ms)
+  ✔ derives object properties from schema changes instead of only refreshing the hash (5.5091ms)
+  ✔ fails closed when a schema uses an unsupported keyword (3.8381ms)
+  ✔ derives discriminant changes and resolves local schema references (3.8066ms)
+  ✔ rejects recursive refs and open objects rather than emitting inaccurate types (11.1233ms)
+  ✔ Ajv 2020 compiles canonical schemas and agrees with runtime validators (98.1038ms)
+✔ canonical schema generation (317.7028ms)
+▶ submission follow-up decision
+  ✔ records accepted and rejected submission outcomes as terminal evidence (3.9058ms)
+  ✔ an unknown submission without lookup evidence is never retried (1.5256ms)
+  ✔ lookup found resolves an unknown submission to acknowledgement (0.1763ms)
+  ✔ retry requires both authoritative not-found evidence and adapter permission (0.1734ms)
+  ✔ network retry permission cannot authorize retry without trusted capability (0.149ms)
+  ✔ trusted capability cannot override an explicit adapter retry refusal (0.2803ms)
+  ✔ inconclusive lookup stays in human review without blind retry (0.1944ms)
+  ✔ lookup evidence cannot override an already terminal submission result (0.2052ms)
+  ✔ strictly validates untrusted submit results (0.5853ms)
+  ✔ strictly validates untrusted lookup results (0.6614ms)
+✔ submission follow-up decision (10.8081ms)
+▶ coverage target derivation
+  ✔ reads consumption from the fall in stock over time (2.8732ms)
+  ✔ adds back what was delivered, so a receipt is not read as negative demand (0.2566ms)
+  ✔ rounds the target up, because part of a box cannot be ordered (0.3315ms)
+  ✔ reports what it used, so a target can be argued with (0.2328ms)
+✔ coverage target derivation (6.7105ms)
+▶ stockouts censor demand rather than measure it
+  ✔ excludes intervals that began or ended empty (0.3388ms)
+  ✔ would have understated demand badly had it averaged everything (0.2169ms)
+  ✔ refuses outright when every interval is censored (0.2804ms)
+✔ stockouts censor demand rather than measure it (1.1564ms)
+▶ what coverage derivation refuses to guess
+  ✔ refuses history too short to mean anything (0.294ms)
+  ✔ refuses history that does not move forwards (0.2645ms)
+  ✔ refuses stock that appeared without a recorded delivery (0.1789ms)
+  ✔ refuses to compare or add across units (0.1307ms)
+  ✔ refuses quantities and policies it cannot read (0.336ms)
+✔ what coverage derivation refuses to guess (1.508ms)
+oidc-provider WARNING: a quick start development-only in-memory adapter is used, you MUST change it in order to not lose all stateful provider data upon restart and to be able to share these between processes
+oidc-provider WARNING: a quick start development-only feature devInteractions is enabled, you are expected to disable these interactions and provide your own
+oidc-provider NOTICE: default ttl.Interaction function called, you SHOULD change it in order to define the expiration for Interaction artifacts.
+oidc-provider NOTICE: default ttl.Session function called, you SHOULD change it in order to define the expiration for Session artifacts.
+oidc-provider NOTICE: default ttl.Grant function called, you SHOULD change it in order to define the expiration for Grant artifacts.
+oidc-provider NOTICE: default ttl.AccessToken function called, you SHOULD change it in order to define the expiration for AccessToken artifacts.
+oidc-provider NOTICE: default ttl.IdToken function called, you SHOULD change it in order to define the expiration for IdToken artifacts.
+✔ AC-001: real OIDC and PostgreSQL API deny foreign private needs without disclosure (9648.3159ms)
+✔ runtime role is a non-login, non-owner safety role without elevated attributes (6954.6545ms)
+✔ private needs are limited to the current tenant and branch (307.3946ms)
+✔ shared orders are visible only to a participating party (1293.3723ms)
+✔ tenant and branch context disappears after commit and rollback (673.1587ms)
+✔ tenant and branch context disappears after a SQL error and rollback in the same session (339.7043ms)
+✔ cross-organisation and out-of-scope branch writes are rejected (623.3156ms)
+✔ composite foreign keys reject a branch paired with the wrong organisation (603.2357ms)
+✔ organisation kind constraints reject reversed order parties (306.2839ms)
+✔ need quantities reject PostgreSQL non-finite numeric values (964.138ms)
+✔ migration runner skips the same hash and rejects a changed ledger hash (6801.4399ms)
+✔ AC-016: a lifecycle that does not permit submit_inventory is denied before any write (4.088ms)
+✔ AC-016: the denial carries the stored status and its sync directive (0.7955ms)
+✔ AC-016: an active installation is authorised from stored scope and rechecked after the lock (1.4ms)
+✔ AC-016: a revocation observed after the inventory lock stops the pending write (1.0703ms)
+oidc-provider WARNING: a quick start development-only in-memory adapter is used, you MUST change it in order to not lose all stateful provider data upon restart and to be able to share these between processes
+oidc-provider WARNING: a quick start development-only feature devInteractions is enabled, you are expected to disable these interactions and provide your own
+oidc-provider NOTICE: default ttl.Interaction function called, you SHOULD change it in order to define the expiration for Interaction artifacts.
+oidc-provider NOTICE: default ttl.Session function called, you SHOULD change it in order to define the expiration for Session artifacts.
+oidc-provider NOTICE: default ttl.Grant function called, you SHOULD change it in order to define the expiration for Grant artifacts.
+oidc-provider NOTICE: default ttl.AccessToken function called, you SHOULD change it in order to define the expiration for AccessToken artifacts.
+oidc-provider NOTICE: default ttl.IdToken function called, you SHOULD change it in order to define the expiration for IdToken artifacts.
+✔ AC-016: pending, suspended and revoked installations are denied on their next inventory request (13567.4156ms)
+oidc-provider WARNING: a quick start development-only in-memory adapter is used, you MUST change it in order to not lose all stateful provider data upon restart and to be able to share these between processes
+oidc-provider WARNING: a quick start development-only feature devInteractions is enabled, you are expected to disable these interactions and provide your own
+✔ AC-016: a connector token cannot borrow another installation scope (7377.3107ms)
+oidc-provider WARNING: a quick start development-only in-memory adapter is used, you MUST change it in order to not lose all stateful provider data upon restart and to be able to share these between processes
+oidc-provider WARNING: a quick start development-only feature devInteractions is enabled, you are expected to disable these interactions and provide your own
+✔ AC-016: an in-flight revocation serialises against the inventory request (12341.1849ms)
+oidc-provider WARNING: a quick start development-only in-memory adapter is used, you MUST change it in order to not lose all stateful provider data upon restart and to be able to share these between processes
+oidc-provider WARNING: a quick start development-only feature devInteractions is enabled, you are expected to disable these interactions and provide your own
+oidc-provider NOTICE: default ttl.Interaction function called, you SHOULD change it in order to define the expiration for Interaction artifacts.
+oidc-provider NOTICE: default ttl.Session function called, you SHOULD change it in order to define the expiration for Session artifacts.
+oidc-provider NOTICE: default ttl.Grant function called, you SHOULD change it in order to define the expiration for Grant artifacts.
+oidc-provider NOTICE: default ttl.AccessToken function called, you SHOULD change it in order to define the expiration for AccessToken artifacts.
+oidc-provider NOTICE: default ttl.IdToken function called, you SHOULD change it in order to define the expiration for IdToken artifacts.
+✔ AC-003/004: authenticated durable replay and incomplete snapshots preserve prior stock (10754.0459ms)
+oidc-provider WARNING: a quick start development-only in-memory adapter is used, you MUST change it in order to not lose all stateful provider data upon restart and to be able to share these between processes
+oidc-provider WARNING: a quick start development-only feature devInteractions is enabled, you are expected to disable these interactions and provide your own
+oidc-provider NOTICE: default ttl.Interaction function called, you SHOULD change it in order to define the expiration for Interaction artifacts.
+oidc-provider NOTICE: default ttl.Session function called, you SHOULD change it in order to define the expiration for Session artifacts.
+oidc-provider NOTICE: default ttl.Grant function called, you SHOULD change it in order to define the expiration for Grant artifacts.
+oidc-provider NOTICE: default ttl.AccessToken function called, you SHOULD change it in order to define the expiration for AccessToken artifacts.
+oidc-provider NOTICE: default ttl.IdToken function called, you SHOULD change it in order to define the expiration for IdToken artifacts.
+✔ live contracts: generated success schemas match real authenticated PostgreSQL responses (13271.3878ms)
+✔ a stale not-found lookup cannot demote a submission that is still in flight (7359.992ms)
+✔ a worker overtaken during an uncertain send reports the durable outcome (6948.7851ms)
+✔ competing workers claim and submit a queued intent exactly once (7475.4638ms)
+✔ a refused supplier ledger keeps the intent queued, reserved and unsubmitted (7693.3647ms)
+✔ a settled unknown outcome with no supplier record escalates to human review exactly once (6983.1873ms)
+✔ a receipt failing on a later line leaves no partial stock, receipt, writeback or spend (6989.2447ms)
+oidc-provider WARNING: a quick start development-only in-memory adapter is used, you MUST change it in order to not lose all stateful provider data upon restart and to be able to share these between processes
+oidc-provider WARNING: a quick start development-only feature devInteractions is enabled, you are expected to disable these interactions and provide your own
+oidc-provider NOTICE: default ttl.Interaction function called, you SHOULD change it in order to define the expiration for Interaction artifacts.
+oidc-provider NOTICE: default ttl.Session function called, you SHOULD change it in order to define the expiration for Session artifacts.
+oidc-provider NOTICE: default ttl.Grant function called, you SHOULD change it in order to define the expiration for Grant artifacts.
+oidc-provider NOTICE: default ttl.AccessToken function called, you SHOULD change it in order to define the expiration for AccessToken artifacts.
+oidc-provider NOTICE: default ttl.IdToken function called, you SHOULD change it in order to define the expiration for IdToken artifacts.
+✔ partial approval subtracts the exact quoted quantity, keeps the remainder open and never subtracts on replay (12787.6421ms)
+oidc-provider WARNING: a quick start development-only in-memory adapter is used, you MUST change it in order to not lose all stateful provider data upon restart and to be able to share these between processes
+oidc-provider WARNING: a quick start development-only feature devInteractions is enabled, you are expected to disable these interactions and provide your own
+✔ an organisation-scoped idempotency key reused by another authorised branch is refused without mutation or disclosure (12094.8114ms)
+oidc-provider WARNING: a quick start development-only in-memory adapter is used, you MUST change it in order to not lose all stateful provider data upon restart and to be able to share these between processes
+oidc-provider WARNING: a quick start development-only feature devInteractions is enabled, you are expected to disable these interactions and provide your own
+oidc-provider NOTICE: default ttl.Interaction function called, you SHOULD change it in order to define the expiration for Interaction artifacts.
+oidc-provider NOTICE: default ttl.Session function called, you SHOULD change it in order to define the expiration for Session artifacts.
+oidc-provider NOTICE: default ttl.Grant function called, you SHOULD change it in order to define the expiration for Grant artifacts.
+oidc-provider NOTICE: default ttl.AccessToken function called, you SHOULD change it in order to define the expiration for AccessToken artifacts.
+oidc-provider NOTICE: default ttl.IdToken function called, you SHOULD change it in order to define the expiration for IdToken artifacts.
+✔ AC-002/005/007/008: binding quotes, parallel approval, changed keys, price freshness and mapping guard (12359.7505ms)
+✔ runtime pool connects with a restricted non-owner login that assumes the NOLOGIN role locally (6212.8788ms)
+✔ authenticated transaction returns the active membership context and only selected-branch rows (10.9226ms)
+✔ subject, organisation, and branch selectors cannot grant membership authority (18.8589ms)
+✔ revoked memberships are denied on their next transaction (2521.9784ms)
+✔ transaction-local tenant context is cleared after success and callback failure on a reused connection (21.4306ms)
+oidc-provider WARNING: a quick start development-only in-memory adapter is used, you MUST change it in order to not lose all stateful provider data upon restart and to be able to share these between processes
+oidc-provider WARNING: a quick start development-only feature devInteractions is enabled, you are expected to disable these interactions and provide your own
+oidc-provider NOTICE: default ttl.Interaction function called, you SHOULD change it in order to define the expiration for Interaction artifacts.
+oidc-provider NOTICE: default ttl.Session function called, you SHOULD change it in order to define the expiration for Session artifacts.
+oidc-provider NOTICE: default ttl.Grant function called, you SHOULD change it in order to define the expiration for Grant artifacts.
+oidc-provider NOTICE: default ttl.AccessToken function called, you SHOULD change it in order to define the expiration for AccessToken artifacts.
+oidc-provider NOTICE: default ttl.IdToken function called, you SHOULD change it in order to define the expiration for IdToken artifacts.
+✔ AC-006/009/010/014: timeout lookup, partial quantities, duplicate receipt and actual restore stay safe (32114.9297ms)
+▶ verified commercial-pack mapping
+  ✔ approves one exact verified identifier and full pack identity match (2.5665ms)
+  ✔ holds ambiguous same-brand text with no verified identifier for review (0.2289ms)
+  ✔ holds identifier matches with a different strength, form, manufacturer, pack, or sale unit (1.6213ms)
+  ✔ requires an explicitly verified identifier and verified product status (0.2039ms)
+  ✔ preserves opaque identifiers including leading zeroes (0.168ms)
+  ✔ holds multiple exact verified candidates for review (0.2127ms)
+  ✔ rejects noncanonical or nonpositive pack-size values as missing identity (0.2592ms)
+✔ verified commercial-pack mapping (7.1528ms)
+▶ multipart inventory snapshots
+  ✔ never lets an old in-progress snapshot replace a newer completed one (3.4873ms)
+  ✔ scopes event identities by installation (0.2089ms)
+  ✔ does not republish a completed snapshot when equivalent content arrives under a different event ID (0.3025ms)
+  ✔ treats object-key order as irrelevant when detecting event replay (0.2098ms)
+  ✔ supports opaque source and installation IDs that match object prototype names (0.2368ms)
+  ✔ deduplicates an identical stable event without another projection update (0.2783ms)
+  ✔ rejects a reused event identity with conflicting content (1.2225ms)
+  ✔ tracks partitions and the completion marker, retaining missing previous rows as stale until all parts arrive (0.5803ms)
+  ✔ rejects conflicting duplicate partitions even when event IDs differ (0.2743ms)
+  ✔ scopes snapshot identity by installation (0.1897ms)
+  ✔ rejects stale sequences and prevents an older snapshot from overwriting a completed projection (0.2288ms)
+  ✔ rejects invalid quantities, duplicate source rows, and malformed completion lists (0.2032ms)
+✔ multipart inventory snapshots (9.463ms)
+▶ exact decimal division at a declared scale
+  ✔ divides to the scale the caller asks for (2.4605ms)
+  ✔ rounds the remainder half away from zero rather than truncating it (0.1738ms)
+  ✔ keeps the sign of the quotient (0.2061ms)
+  ✔ refuses division by zero and anything it cannot read (0.2239ms)
+✔ exact decimal division at a declared scale (4.6689ms)
+▶ exact decimal ceiling
+  ✔ rounds up to a whole unit, because part of a box cannot be ordered (0.2753ms)
+  ✔ leaves whole values alone (0.1561ms)
+  ✔ rounds towards zero on the negative side, as a ceiling does (0.1762ms)
+  ✔ refuses what it cannot read (0.2075ms)
+✔ exact decimal ceiling (1.1007ms)
+▶ exact decimal addition and subtraction
+  ✔ adds and subtracts the way arithmetic does, not the way doubles do (0.3966ms)
+  ✔ carries across scales and signs without drifting (0.2906ms)
+  ✔ keeps precision no double could hold (0.1698ms)
+  ✔ refuses an operand it cannot read exactly (0.1465ms)
+✔ exact decimal addition and subtraction (1.2423ms)
+▶ exact decimal comparison
+  ✔ orders by value, not by the string it happens to be written as (0.359ms)
+  ✔ orders negatives and zero the way arithmetic does (0.1735ms)
+  ✔ separates values no double could tell apart (0.0988ms)
+  ✔ reports an unusable operand rather than sorting it arbitrarily (0.0894ms)
+✔ exact decimal comparison (0.8927ms)
+▶ exact decimal multiplication
+  ✔ produces the result arithmetic gives, not the one binary floats give (0.1878ms)
+  ✔ canonicalises the product, so equal totals compare equal (0.0919ms)
+  ✔ keeps the sign and the full precision of both operands (0.1174ms)
+  ✔ refuses an operand it cannot read exactly (0.127ms)
+✔ exact decimal multiplication (0.6875ms)
+▶ replay-safe snapshot envelope derivation
+  ✔ derives the same identity from the same feed every time (2.8026ms)
+  ✔ takes the sequence from the feed, never from the local clock (0.3784ms)
+  ✔ digests canonical content, so row order and spelling of the file cannot split one event (0.2738ms)
+  ✔ gives changed stock a new event without disturbing the snapshot it belongs to (0.3075ms)
+  ✔ keeps partitions of one export inside one snapshot (0.2539ms)
+  ✔ never collides across installations or batches (0.3272ms)
+  ✔ produces identifiers the inventory domain accepts (1.0088ms)
+✔ replay-safe snapshot envelope derivation (7.0343ms)
+▶ re-reading a feed after a restart
+  ✔ is recognised as a duplicate rather than counted twice (0.4148ms)
+  ✔ refuses an export older than what has already been accepted (0.2721ms)
+  ✔ still allows the same export to be presented again (0.3141ms)
+✔ re-reading a feed after a restart (1.2493ms)
+▶ envelope derivation refusals
+  ✔ refuses a partition it cannot identify or time (0.1783ms)
+  ✔ refuses an empty partition rather than recording an empty branch (0.1793ms)
+✔ envelope derivation refusals (0.5165ms)
+▶ delimited feed ingestion
+  ✔ carries a dropped file all the way to an event the domain accepts (8.1975ms)
+  ✔ unwraps a compressed drop within its budget (1.8801ms)
+  ✔ declares the order its guards run in (0.216ms)
+✔ delimited feed ingestion (13.1135ms)
+▶ ingestion refuses at the earliest stage that can see the problem
+  ✔ never opens a file whose path escapes the drop root (0.7466ms)
+  ✔ surfaces a failed read as its own stage rather than an empty feed (0.2805ms)
+  ✔ turns an unexpected reader exception into the stable read refusal (0.4038ms)
+  ✔ rejects a reader result that exceeds the declared input budget (0.3893ms)
+  ✔ refuses a decompression bomb before anything tries to parse it (40.7908ms)
+  ✔ refuses a formula payload at the parse edge (0.4875ms)
+  ✔ refuses a unit the contract never declared at the adapter (0.2833ms)
+  ✔ refuses a source code that would read differently than it is stored (0.5932ms)
+✔ ingestion refuses at the earliest stage that can see the problem (44.566ms)
+▶ AC-016 revoking a paired installation
+  ✔ denies the next request and stops sync, whenever the work was queued (3.136ms)
+  ✔ pauses rather than stops when an installation is only suspended (0.4106ms)
+✔ AC-016 revoking a paired installation (5.1543ms)
+▶ installation pairing lifecycle
+  ✔ starts pending and can only read its own configuration (0.585ms)
+  ✔ records when pairing completed and grants the full capability set (0.2921ms)
+  ✔ suspends and resumes without losing the pairing (0.1801ms)
+  ✔ escalates a suspended installation straight to revoked (0.2129ms)
+  ✔ treats revocation as terminal (0.2618ms)
+  ✔ ignores a replayed command instead of failing it (0.208ms)
+  ✔ refuses a transition that is not legal from the current state (0.2253ms)
+  ✔ refuses a command that would move the audit trail backwards (0.1294ms)
+  ✔ refuses a command it cannot record honestly (0.1791ms)
+✔ installation pairing lifecycle (2.8171ms)
+▶ re-pairing after revocation
+  ✔ issues a new identity that supersedes the revoked one (0.3599ms)
+  ✔ never reuses a revoked identity (0.2278ms)
+  ✔ refuses to replace an installation that is still live (0.1128ms)
+✔ re-pairing after revocation (0.9752ms)
+▶ need derivation
+  ✔ asks for the difference between what is wanted and what is held (2.7921ms)
+  ✔ subtracts what is already on order, so nothing is bought twice (0.2658ms)
+  ✔ computes the difference exactly rather than through a float (0.1607ms)
+  ✔ reports what it read, so a need can be explained without recomputing it (1.2292ms)
+  ✔ orders its output so two identical inputs produce one answer (0.3075ms)
+✔ need derivation (6.5781ms)
+▶ what need derivation refuses to guess
+  ✔ never reads a missing observation as empty shelves (0.32ms)
+  ✔ never orders against stock it knows is out of date (0.2083ms)
+  ✔ withholds rather than converting between units (0.1843ms)
+  ✔ withholds a position already covered by stock or by open orders (0.1896ms)
+  ✔ withholds anything it cannot read as an exact quantity (0.2071ms)
+  ✔ reports every withheld position rather than only the first (0.221ms)
+✔ what need derivation refuses to guess (1.7237ms)
+▶ manual re-approval after reconnecting
+  ✔ binds the new approval to the state the server reports now (1.9953ms)
+  ✔ issues a different idempotency key once a bound fact has moved (0.2324ms)
+  ✔ derives the same key from the same bound facts, so a retry cannot duplicate an order (0.1731ms)
+  ✔ gives two people approving the same state one key, not two orders (0.2459ms)
+  ✔ separates keys across drafts, relationships and totals (0.2006ms)
+  ✔ produces a draft that then reconciles as submittable (0.3602ms)
+  ✔ refuses to re-approve a draft whose authorisation or quote is gone (0.3095ms)
+  ✔ refuses an approver or timestamp it cannot record (0.1583ms)
+✔ manual re-approval after reconnecting (5.7866ms)
+▶ AC-012 offline draft reconnecting after a terms change
+  ✔ requires manual approval and exposes no way to submit (2.3025ms)
+✔ AC-012 offline draft reconnecting after a terms change (4.0011ms)
+▶ offline draft reconciliation
+  ✔ releases an unchanged approved draft with its original idempotency key (1.6553ms)
+  ✔ requires approval for a draft that was never approved (0.2564ms)
+  ✔ names each bound fact that moved while the device was offline (0.297ms)
+  ✔ reports every reason at once rather than the first one found (0.2263ms)
+  ✔ blocks a draft whose authorisation no longer holds (0.2396ms)
+  ✔ blocks a draft whose quote can no longer be honoured (0.1772ms)
+  ✔ puts authorisation ahead of approval so a revoked user is never merely reprompted (0.2309ms)
+  ✔ refuses to release anything that is not submittable (0.1584ms)
+✔ offline draft reconciliation (3.8018ms)
+▶ supplier fulfilment rate
+  ✔ measures what arrived against what was ordered (2.7289ms)
+  ✔ counts a short delivery proportionally rather than as a pass or a fail (0.2707ms)
+  ✔ counts a supplier rejection as nothing delivered (0.2516ms)
+✔ supplier fulfilment rate (6.3878ms)
+▶ what a supplier is not blamed for
+  ✔ excludes an order whose outcome nobody knows, rather than scoring it (0.3014ms)
+  ✔ excludes an order the pharmacy cancelled (0.233ms)
+  ✔ refuses to publish a rate from too few completed orders (0.3143ms)
+✔ what a supplier is not blamed for (1.1932ms)
+▶ observed lead time and the orders still in flight
+  ✔ measures the days from placing an order to receiving it (0.4968ms)
+  ✔ knows its lead time is understated when an order has already run longer (0.4295ms)
+  ✔ does not cry bias when nothing outstanding has run long yet (0.2108ms)
+✔ observed lead time and the orders still in flight (1.4738ms)
+▶ what performance derivation refuses
+  ✔ refuses a timeline that runs backwards (0.4697ms)
+  ✔ refuses to mix units or read an unusable quantity (0.2101ms)
+  ✔ refuses a policy that would publish noise (0.228ms)
+  ✔ ignores orders belonging to another supplier (0.1762ms)
+✔ what performance derivation refuses (1.3851ms)
+✔ independent instances submitting one reference converge on a single external order (118.5194ms)
+✔ concurrent submissions of distinct references all survive in one ledger (125.2725ms)
+✔ independent processes submitting one reference converge on a single external order (323.9249ms)
+✔ a submission in flight does not block a competing lookup, which sees no order yet (18.3738ms)
+✔ an unavailable ledger is refused within a bound, and evidence is never overwritten or broken (331.6998ms)
+✔ lock bounds that cannot bound a wait are refused before any ledger access (8.7733ms)
+✔ a wall clock moving backwards cannot extend the bounded wait (396.005ms)
+▶ neutral supply ranking
+  ✔ orders eligible offers by what the pharmacy actually pays (4.6452ms)
+  ✔ computes the line total exactly rather than through a float (0.2828ms)
+  ✔ never lets sponsorship change merit order (0.3885ms)
+  ✔ keeps a sponsored offer below a cheaper one (0.2249ms)
+  ✔ discloses sponsorship on the offer and in the summary (0.3824ms)
+  ✔ breaks ties by lead time, then fulfilment, then supplier identity (0.3355ms)
+  ✔ names the first criterion where each offer parts from the leader (0.2761ms)
+✔ neutral supply ranking (8.6154ms)
+▶ supply eligibility gates
+  ✔ excludes an offer whose supplier relationship is not active (0.4561ms)
+  ✔ excludes an offer on terms the pharmacy has not accepted (0.1486ms)
+  ✔ excludes an offer for another product or another unit (0.1825ms)
+  ✔ excludes an offer that cannot cover the need (0.3524ms)
+  ✔ excludes an offer carrying a price it cannot read exactly (0.22ms)
+  ✔ returns an empty ranking rather than a fallback when nothing qualifies (0.3166ms)
+✔ supply eligibility gates (2.3777ms)
+✔ generates the same fixture graph on every call (4.4545ms)
+✔ returns a fresh, deeply independent graph on every call (0.5388ms)
+✔ contains the required organisations, branches, roles, and invented packs (0.5352ms)
+✔ maintains referential integrity across the fixture graph (0.4478ms)
+✔ all fixture entity IDs are canonical UUIDs (0.5771ms)
+✔ models ambiguous strengths without collapsing product identity (0.2814ms)
+✔ models account-specific active offers and an expired offer (0.646ms)
+✔ models an incomplete multipart snapshot that cannot erase prior stock (0.3036ms)
+▶ Arabic search normalisation
+  ✔ folds the alef variants a typist chooses between (1.4873ms)
+  ✔ folds teh marbuta and alef maqsura to their plain forms (1.2046ms)
+  ✔ strips decorative elongation and diacritics (0.1748ms)
+  ✔ reads Arabic-Indic and Persian digits as the numbers they are (0.4128ms)
+  ✔ folds Latin case and collapses runs of whitespace (0.1115ms)
+  ✔ lets two honest spellings of one product meet (0.1736ms)
+  ✔ is idempotent, so a normalised query can be normalised again (0.2264ms)
+  ✔ removes invisible characters that would split a search term (0.137ms)
+  ✔ never produces something usable as an identity (0.7656ms)
+✔ Arabic search normalisation (6.8107ms)
+▶ bidirectional control inspection
+  ✔ accepts plain Latin, plain Arabic and ordinary mixed text (2.1703ms)
+  ✔ reports which scripts a label actually mixes (0.252ms)
+  ✔ does not mistake a byte order mark for right-to-left script (0.1652ms)
+  ✔ refuses the directional overrides that make text read differently than it is (0.1965ms)
+  ✔ refuses isolates and invisible marks arriving in vendor data (0.2135ms)
+  ✔ refuses text beyond the inspection budget (0.1433ms)
+✔ bidirectional control inspection (4.9703ms)
+▶ identifier display isolation
+  ✔ recovers the identifier exactly from its isolated form (0.7619ms)
+  ✔ keeps the identifier intact inside a right-to-left label (0.2027ms)
+  ✔ wraps with isolates rather than overrides, so nesting cannot leak (0.1425ms)
+  ✔ refuses to isolate something that is not a safe identifier (0.6461ms)
+✔ identifier display isolation (2.008ms)
+▶ identifier text safety
+  ✔ accepts opaque vendor codes in either script (0.4076ms)
+  ✔ refuses digits that only look like the digits they are not (0.3058ms)
+  ✔ refuses invisible characters that split one identity into two (0.1735ms)
+  ✔ refuses an empty or oversized identifier (0.1104ms)
+  ✔ refuses C0 and C1 control characters (0.2111ms)
+✔ identifier text safety (1.5524ms)
+▶ exact decimal canonicalisation
+  ✔ strips redundant zeros so equivalent transport spellings converge (1.5773ms)
+  ✔ collapses every spelling of zero, including negative zero (0.193ms)
+  ✔ accepts unambiguous shorthand a spreadsheet export produces (1.0525ms)
+  ✔ preserves precision no floating point could survive (0.1861ms)
+  ✔ always produces a string the contract validator accepts (0.2648ms)
+  ✔ refuses ambiguous, padded and machine-formatted numbers (0.2259ms)
+  ✔ refuses values that are not decimals at all (0.2497ms)
+  ✔ refuses values beyond the contract length budget (0.1546ms)
+✔ exact decimal canonicalisation (5.7905ms)
+▶ inventory observation adaptation
+  ✔ produces a partition event the inventory domain accepts (3.1808ms)
+  ✔ canonicalises quantities and resolves unit aliases case-insensitively (1.5103ms)
+  ✔ sorts rows by source code so transport row order cannot change the event (0.2539ms)
+  ✔ never converts a quantity between units (0.1773ms)
+  ✔ applies the declared source-code normalisation and nothing else (0.267ms)
+  ✔ refuses a unit the contract does not declare rather than guessing one (0.2766ms)
+  ✔ refuses quantities that are not exact decimals (0.3474ms)
+  ✔ refuses source codes that collide only after normalisation (0.1564ms)
+  ✔ refuses an empty source code and an empty observation set (0.2522ms)
+  ✔ refuses a source code that cannot be one identity on screen and in data (0.4481ms)
+  ✔ refuses a field carrying a spreadsheet formula payload (0.286ms)
+✔ inventory observation adaptation (9.1708ms)
+▶ AC-015 cross-transport equivalence
+  ✔ produces one canonical event from every supported transport (2.1528ms)
+  ✔ produces one canonical projection including units, version and freshness (1.4981ms)
+  ✔ agrees on purchase meaning rather than on row order or spelling (0.3602ms)
+  ✔ still distinguishes genuinely different stock, so equivalence is not vacuous (0.3384ms)
+✔ AC-015 cross-transport equivalence (6.06ms)
+▶ JSON API transport
+  ✔ reads canonical field names from a row array (2.2988ms)
+  ✔ refuses a JSON number quantity rather than reading it as a decimal (0.3107ms)
+  ✔ refuses payloads that are not a row collection (0.1794ms)
+  ✔ refuses a row missing a canonical field (0.2121ms)
+  ✔ bounds the number of rows it will accept (0.2524ms)
+✔ JSON API transport (5.314ms)
+▶ on-premise database view transport
+  ✔ maps vendor column names onto canonical observations (0.4385ms)
+  ✔ accepts a safe integer column without risking precision (0.1946ms)
+  ✔ refuses a fractional or unsafe numeric column (0.1746ms)
+  ✔ refuses a view missing a mapped column (0.1724ms)
+  ✔ refuses an empty result set (0.1662ms)
+✔ on-premise database view transport (1.7205ms)
+▶ delimited file transport
+  ✔ reads a header-mapped file with a byte order mark and CRLF line endings (1.2144ms)
+  ✔ honours quoted fields containing the delimiter, newlines and escaped quotes (0.278ms)
+  ✔ reads an alternative delimiter when the contract declares one (0.1503ms)
+  ✔ refuses ragged rows rather than padding them (0.1746ms)
+  ✔ refuses an unterminated quoted field and invalid UTF-8 (0.1981ms)
+  ✔ refuses a missing header column, an empty file and a header-only file (0.177ms)
+  ✔ refuses a cell carrying a formula payload at the parse edge (0.2612ms)
+✔ delimited file transport (2.9743ms)
+▶ bounded gzip decompression
+  ✔ restores a small feed payload and reports its expansion ratio (2.991ms)
+  ✔ rejects compressed input larger than the transport budget (0.281ms)
+  ✔ rejects a decompression bomb on the output cap before allocating it (16.1671ms)
+  ✔ rejects an expansion ratio beyond policy even when output fits (5.5917ms)
+  ✔ rejects input that is not a gzip member at all (1.2622ms)
+✔ bounded gzip decompression (28.0822ms)
+▶ allowlisted root containment
+  ✔ accepts a nested relative path and resolves it inside the root (3.8236ms)
+  ✔ rejects parent traversal expressed with forward or backward separators (0.5691ms)
+  ✔ rejects absolute, drive-qualified and UNC paths (0.1683ms)
+  ✔ rejects null bytes and control characters used to truncate or forge names (0.2086ms)
+  ✔ rejects Windows reserved device names with or without an extension (0.1951ms)
+  ✔ rejects alternate data streams, trailing dots and trailing spaces (0.1855ms)
+  ✔ rejects empty input, empty segments and oversized names (0.3067ms)
+  ✔ treats a sibling directory sharing the root prefix as outside the root (0.2013ms)
+✔ allowlisted root containment (8.0192ms)
+▶ symlink-aware root containment
+  ✔ accepts a real file inside the root and a not-yet-created sibling (3.1521ms)
+  ✔ rejects a symlink that escapes the root (2.9765ms)
+  ✔ does not read through a symlink that escapes the root (3.5705ms)
+  ✔ stops reading when a file exceeds its byte budget (3.7393ms)
+  ✔ rejects a directory instead of treating it as feed bytes (1.4557ms)
+  ✔ rejects string-level hostile input before touching the filesystem (0.2716ms)
+✔ symlink-aware root containment (36.1044ms)
+▶ untrusted spreadsheet cell inspection
+  ✔ accepts ordinary product text and exact decimal quantities (1.2939ms)
+  ✔ accepts signed plain numbers that only look like a formula prefix (0.2093ms)
+  ✔ rejects formula, command and hyperlink prefixes (1.2041ms)
+  ✔ rejects formula prefixes hidden behind whitespace or zero-width characters (0.4112ms)
+  ✔ rejects embedded control characters and oversized cells (0.2501ms)
+✔ untrusted spreadsheet cell inspection (5.2343ms)
+▶ untrusted table bounds
+  ✔ accepts a bounded grid and reports its shape (0.3828ms)
+  ✔ reports the exact coordinate of the first unsafe cell (0.2016ms)
+  ✔ rejects grids beyond the row and column budget (0.2875ms)
+✔ untrusted table bounds (1.0687ms)
+▶ untrusted XML inspection
+  ✔ accepts a declared UTF-8 document and reports its shape (6.2054ms)
+  ✔ accepts comments, CDATA and self-closing elements without counting them as nesting (0.5354ms)
+  ✔ rejects any document type or entity declaration (0.3936ms)
+  ✔ rejects entity expansion payloads regardless of nesting (0.2423ms)
+  ✔ rejects unknown named entity references while allowing predefined and numeric ones (0.4097ms)
+  ✔ rejects processing instructions other than the leading XML declaration (0.2843ms)
+  ✔ rejects XInclude external references (0.2082ms)
+  ✔ rejects encodings other than UTF-8 rather than scanning a partial view (0.3817ms)
+  ✔ accepts a UTF-8 byte order mark (0.2979ms)
+  ✔ bounds document size, nesting depth and element count (0.5967ms)
+  ✔ rejects unterminated and unbalanced markup instead of guessing (0.5974ms)
+✔ untrusted XML inspection (14.7381ms)
+ℹ tests 384
+ℹ suites 57
+ℹ pass 384
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 226051.7488
+ℹ start of coverage report
+ℹ --------------------------------------------------------------------------------------------------------------------------
+ℹ file                          | line % | branch % | funcs % | uncovered lines
+ℹ --------------------------------------------------------------------------------------------------------------------------
+ℹ apps                          |        |          |         |
+ℹ  api                          |        |          |         |
+ℹ   src                         |        |          |         |
+ℹ    app.ts                     | 100.00 |   100.00 |  100.00 |
+ℹ    errors.ts                  | 100.00 |   100.00 |  100.00 |
+ℹ    tenant-api.ts              | 100.00 |    90.24 |  100.00 |
+ℹ infra                         |        |          |         |
+ℹ  oidc                         |        |          |         |
+ℹ   provider.ts                 | 100.00 |    83.33 |   57.14 |
+ℹ packages                      |        |          |         |
+ℹ  alerting                     |        |          |         |
+ℹ   src                         |        |          |         |
+ℹ    alert-episode.ts           | 100.00 |   100.00 |  100.00 |
+ℹ    quiet-hours.ts             |  94.64 |    91.43 |  100.00 | 59-60 63-64 68-69
+ℹ  auth                         |        |          |         |
+ℹ   src                         |        |          |         |
+ℹ    verify-access-token.ts     | 100.00 |    71.43 |  100.00 |
+ℹ  contracts                    |        |          |         |
+ℹ   scripts                     |        |          |         |
+ℹ    contract-codegen.ts        |  91.67 |    80.00 |   94.74 | 45-46 54-55 63-64 71-72 77-78 110 121-122
+ℹ    openapi.ts                 | 100.00 |   100.00 |  100.00 |
+ℹ    verify-contracts.ts        |  88.24 |    33.33 |  100.00 | 13-14
+ℹ   src                         |        |          |         |
+ℹ    approval.ts                | 100.00 |   100.00 |  100.00 |
+ℹ    decimal.ts                 | 100.00 |   100.00 |  100.00 |
+ℹ    inventory-schema.ts        | 100.00 |   100.00 |  100.00 |
+ℹ    quote-schema.ts            | 100.00 |   100.00 |  100.00 |
+ℹ    submission.ts              |  93.65 |    90.41 |  100.00 | 67-68 72-73 84-85 95-96
+ℹ  coverage-target              |        |          |         |
+ℹ   src                         |        |          |         |
+ℹ    derive-coverage-target.ts  |  95.17 |    87.14 |  100.00 | 126-127 138-139 147-148 195-196 198-199
+ℹ  db                           |        |          |         |
+ℹ   scripts                     |        |          |         |
+ℹ    postgres.mjs               |  71.53 |    64.71 |   80.00 | 30-31 56-57 69-70 105-132 134-135 140-144
+ℹ    runtime-setup.mjs          |  82.98 |    58.33 |  100.00 | 21 28 31 43-47
+ℹ   src                         |        |          |         |
+ℹ    installation.ts            | 100.00 |    82.35 |  100.00 |
+ℹ    inventory.ts               | 100.00 |    94.74 |   75.00 |
+ℹ    orders.ts                  | 100.00 |    85.71 |  100.00 |
+ℹ    procurement.ts             | 100.00 |    75.47 |  100.00 |
+ℹ    runtime.ts                 |  94.23 |    63.16 |   85.71 | 68-69 72-73 105-106 109-111
+ℹ  domain                       |        |          |         |
+ℹ   src                         |        |          |         |
+ℹ    commercial-pack-mapping.ts | 100.00 |   100.00 |  100.00 |
+ℹ    inventory-snapshot.ts      |  97.30 |    90.48 |  100.00 | 76-77 95-96 134-135
+ℹ  exact-decimal                |        |          |         |
+ℹ   src                         |        |          |         |
+ℹ    exact-decimal.ts           | 100.00 |    98.41 |  100.00 |
+ℹ  feed-identity                |        |          |         |
+ℹ   src                         |        |          |         |
+ℹ    snapshot-envelope.ts       |  97.83 |    92.31 |  100.00 | 49-50
+ℹ  feed-ingestion               |        |          |         |
+ℹ   src                         |        |          |         |
+ℹ    ingest-delimited-feed.ts   |  98.33 |    91.30 |  100.00 | 58-59
+ℹ  installation-lifecycle       |        |          |         |
+ℹ   src                         |        |          |         |
+ℹ    pairing.ts                 |  97.22 |    94.23 |  100.00 | 84-85 87-88 161-162
+ℹ  need-derivation              |        |          |         |
+ℹ   src                         |        |          |         |
+ℹ    derive-needs.ts            |  97.20 |    93.94 |  100.00 | 122-123 140-141
+ℹ  offline-draft                |        |          |         |
+ℹ   src                         |        |          |         |
+ℹ    draft-reapproval.ts        |  97.87 |    95.00 |  100.00 | 33-34
+ℹ    draft-reconciliation.ts    | 100.00 |   100.00 |  100.00 |
+ℹ  supplier-performance         |        |          |         |
+ℹ   src                         |        |          |         |
+ℹ    derive-performance.ts      |  94.08 |    87.80 |  100.00 | 69-70 74-75 95-96 139-140 149-150
+ℹ  supplier                     |        |          |         |
+ℹ   src                         |        |          |         |
+ℹ    fake.ts                    | 100.00 |    92.45 |   96.00 |
+ℹ  supply-ranking               |        |          |         |
+ℹ   src                         |        |          |         |
+ℹ    supply-ranking.ts          |  99.53 |    92.00 |  100.00 | 181
+ℹ  test-fixtures                |        |          |         |
+ℹ   src                         |        |          |         |
+ℹ    index.ts                   | 100.00 |   100.00 |  100.00 |
+ℹ  text-identity                |        |          |         |
+ℹ   src                         |        |          |         |
+ℹ    arabic-search.ts           | 100.00 |    83.33 |  100.00 |
+ℹ    bidi-safety.ts             | 100.00 |    94.59 |  100.00 |
+ℹ  transport-adapters           |        |          |         |
+ℹ   src                         |        |          |         |
+ℹ    canonical-decimal.ts       | 100.00 |    86.96 |  100.00 |
+ℹ    database-view-transport.ts |  93.10 |    86.96 |  100.00 | 19-20 25-26
+ℹ    delimited-transport.ts     |  94.41 |    91.84 |  100.00 | 35-36 49-50 113-114 139-140
+ℹ    inventory-adapter.ts       |  98.33 |    97.06 |  100.00 | 117-118
+ℹ    json-transport.ts          | 100.00 |   100.00 |  100.00 |
+ℹ    transport-result.ts        | 100.00 |   100.00 |  100.00 |
+ℹ  transport-safety             |        |          |         |
+ℹ   src                         |        |          |         |
+ℹ    decompression-budget.ts    |  96.88 |    88.89 |  100.00 | 48-49
+ℹ    path-boundary.ts           |  90.76 |    83.12 |   84.62 | 67-68 85-86 100-101 105-106 116-117 136-137 142-150 227-228
+ℹ    tabular-safety.ts          | 100.00 |    88.89 |  100.00 |
+ℹ    xml-safety.ts              |  95.22 |    92.55 |  100.00 | 128-129 137-138 145-146 164-165 208-209 242-243
+ℹ --------------------------------------------------------------------------------------------------------------------------
+ℹ all files                     |  96.56 |    89.56 |   96.45 |
+ℹ --------------------------------------------------------------------------------------------------------------------------
+ℹ end of coverage report

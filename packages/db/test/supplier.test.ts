@@ -71,5 +71,9 @@ test('AC-006/009/010/014: timeout lookup, partial quantities, duplicate receipt 
     assert.equal((await restored.reconcile(intentId)).state,'acknowledged');
     assert.equal((await supplier.ledger()).submitCalls,1);
     assert.equal((await sql('SELECT state FROM order_intent')).trim(),'acknowledged');
-  } finally {await pool.end();}
+  } finally {
+    // Restore/reconnect may fail after the original pool was closed. Preserve that
+    // failure instead of replacing it with a second pool.end() rejection.
+    if (!pool.ending) await pool.end();
+  }
 });
