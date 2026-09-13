@@ -1,4 +1,5 @@
 import path from 'node:path';
+import { isUtcInstant } from '../../contracts/src/submission.ts';
 
 import type {
   InventoryAdapterContract,
@@ -44,6 +45,7 @@ export type FeedManifestRejectionReason =
   | 'invalid_file_count'
   | 'too_many_files'
   | 'no_files'
+  | 'multipart_batch_unsupported'
   | 'unsupported_format'
   | 'unsafe_relative_path'
   | 'duplicate_partition_key'
@@ -91,7 +93,7 @@ export function readFeedManifest(value: unknown): FeedManifestDecision {
   const exportedAt = requiredText(source, 'exportedAt');
   if (typeof exportedAt !== 'string') return exportedAt;
   const instant = Date.parse(exportedAt);
-  if (Number.isNaN(instant) || instant <= 0) return reject('invalid_exported_at', exportedAt);
+  if (!isUtcInstant(exportedAt) || instant <= 0) return reject('invalid_exported_at', exportedAt);
 
   const maxFiles = requiredCount(source, 'maxFiles');
   if (typeof maxFiles !== 'number') return maxFiles;
@@ -112,6 +114,9 @@ export function readFeedManifest(value: unknown): FeedManifestDecision {
 
   const files = readFiles(source['files'], maxFiles);
   if ('kind' in files) return files;
+  // This worker publishes one complete snapshot per file. Multiple partitions
+  // require a shared atomic completion boundary before they can be supported.
+  if (files.length !== 1) return reject('multipart_batch_unsupported', 'files');
 
   return {
     kind: 'accepted',
