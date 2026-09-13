@@ -1,0 +1,59 @@
+oidc-provider WARNING: a quick start development-only in-memory adapter is used, you MUST change it in order to not lose all stateful provider data upon restart and to be able to share these between processes
+oidc-provider WARNING: a quick start development-only feature devInteractions is enabled, you are expected to disable these interactions and provide your own
+oidc-provider NOTICE: default ttl.Interaction function called, you SHOULD change it in order to define the expiration for Interaction artifacts.
+oidc-provider NOTICE: default ttl.Session function called, you SHOULD change it in order to define the expiration for Session artifacts.
+oidc-provider NOTICE: default ttl.Grant function called, you SHOULD change it in order to define the expiration for Grant artifacts.
+oidc-provider NOTICE: default ttl.AccessToken function called, you SHOULD change it in order to define the expiration for AccessToken artifacts.
+oidc-provider NOTICE: default ttl.IdToken function called, you SHOULD change it in order to define the expiration for IdToken artifacts.
+âœ– partial approval subtracts the exact quoted quantity, keeps the remainder open and never subtracts on replay (13454.0307ms)
+oidc-provider WARNING: a quick start development-only in-memory adapter is used, you MUST change it in order to not lose all stateful provider data upon restart and to be able to share these between processes
+oidc-provider WARNING: a quick start development-only feature devInteractions is enabled, you are expected to disable these interactions and provide your own
+âœ– an organisation-scoped idempotency key reused by another authorised branch is refused without mutation or disclosure (7280.4782ms)
+â„¹ tests 2
+â„¹ suites 0
+â„¹ pass 0
+â„¹ fail 2
+â„¹ cancelled 0
+â„¹ skipped 0
+â„¹ todo 0
+â„¹ duration_ms 21567.9282
+
+âœ– failing tests:
+
+test at packages\db\test\procurement-invariants.test.ts:33:1
+âœ– partial approval subtracts the exact quoted quantity, keeps the remainder open and never subtracts on replay (13454.0307ms)
+  AssertionError [ERR_ASSERTION]: Expected values to be strictly equal:
+  + actual - expected
+
+  + 'covered|2|2'
+  - 'open|2|1'
+
+      at TestContext.<anonymous> (file:///D:/Repos/PharmaCart/packages/db/test/procurement-invariants.test.ts:59:12)
+      at process.processTicksAndRejections (node:internal/process/task_queues:104:5)
+      at async Test.run (node:internal/test_runner/test:1389:7)
+      at async startSubtestAfterBootstrap (node:internal/test_runner/harness:387:3) {
+    generatedMessage: true,
+    code: 'ERR_ASSERTION',
+    actual: 'covered|2|2',
+    expected: 'open|2|1',
+    operator: 'strictEqual',
+    diff: 'simple'
+  }
+
+test at packages\db\test\procurement-invariants.test.ts:100:1
+âœ– an organisation-scoped idempotency key reused by another authorised branch is refused without mutation or disclosure (7280.4782ms)
+  AssertionError [ERR_ASSERTION]: {"error":{"code":"INTERNAL_ERROR","message":"An unexpected error occurred.","correlationId":"67f415e4-e681-4326-b43d-4439b55009fb"}}
+
+  500 !== 409
+
+      at TestContext.<anonymous> (file:///D:/Repos/PharmaCart/packages/db/test/procurement-invariants.test.ts:119:12)
+      at process.processTicksAndRejections (node:internal/process/task_queues:104:5)
+      at async Test.run (node:internal/test_runner/test:1389:7)
+      at async Test.processPendingSubtests (node:internal/test_runner/test:960:7) {
+    generatedMessage: false,
+    code: 'ERR_ASSERTION',
+    actual: 500,
+    expected: 409,
+    operator: 'strictEqual',
+    diff: 'simple'
+  }

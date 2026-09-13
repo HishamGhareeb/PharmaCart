@@ -6,7 +6,7 @@ import { ProcurementError, type QuoteLine } from './procurement.ts';
 import { isPositiveDecimalString } from '../../contracts/src/decimal.ts';
 
 type WorkerScope={subject:string;organisationId:string;branchId:string};
-type Intent={id:string;state:string;quote_id:string;supplier_id:string;external_client_ref:string};
+type Intent={id:string;state:string;version:number;quote_id:string;supplier_id:string;external_client_ref:string;external_order_id:string|null};
 async function intent(client:RuntimeClient,id:string):Promise<Intent>{
   const row=(await client.query('SELECT * FROM order_intent WHERE id=$1 FOR UPDATE',[id])).rows[0];
   if(!row)throw new ProcurementError(404,'NOT_FOUND');return row;
@@ -62,28 +62,43 @@ export class IntentWorker {
     if(!claim.lines)return claim.row.state==='outcome_unknown'?this.reconcile(id):{state:claim.row.state};
     try {return await this.acknowledge(id,await this.supplier.submit(claim.row.external_client_ref,claim.lines));}
     catch {
-      await this.transaction(async(c,x)=>{
-        await intent(c,id);
-        await c.query("UPDATE order_intent SET state='outcome_unknown',version=version+1 WHERE id=$1 AND state='submitting'",[id]);
+      // A failed send is only this attempt's evidence. If a competing worker already settled the intent
+      // from adapter evidence, report that durable outcome and record no unknown-outcome fact for it.
+      return this.transaction(async(c,x)=>{
+        const row=await intent(c,id);
+        if(row.state!=='submitting')return {state:row.state};
+        await c.query("UPDATE order_intent SET state='outcome_unknown',version=version+1 WHERE id=$1",[id]);
         await c.query("UPDATE submission_attempt SET outcome='unknown' WHERE intent_id=$1 AND outcome='started'",[id]);
         await c.query("INSERT INTO procurement_outbox(organisation_id,branch_id,aggregate_id,event_type) VALUES($1,$2,$3,'OrderOutcomeUnknown') ON CONFLICT DO NOTHING",[x.organisationId,x.branchId,id]);
-      });return {state:'outcome_unknown'};
+        return {state:'outcome_unknown'};
+      });
     }
   }
   async reconcile(id:string):Promise<{state:string}>{
-    const row=await this.transaction(c=>intent(c,id));
-    if(['acknowledged','rejected'].includes(row.state))return {state:row.state};
+    const observed=await this.transaction(c=>intent(c,id));
+    if(['acknowledged','rejected'].includes(observed.state))return {state:observed.state};
     let found:Acknowledgement|undefined;
-    try {found=await this.supplier.lookup(row.external_client_ref);}catch{return {state:'outcome_unknown'};}
+    // An unavailable or refused lookup is inconclusive: this attempt reports uncertainty and mutates nothing.
+    try {found=await this.supplier.lookup(observed.external_client_ref);}catch{return {state:'outcome_unknown'};}
     if(found)return this.acknowledge(id,found);
-    if(row.state==='queued'){this.checked.add(id);return {state:'queued'};}
-    await this.transaction(async c=>{await intent(c,id);await c.query("UPDATE order_intent SET state='human_review',version=version+1 WHERE id=$1 AND state IN ('submitting','outcome_unknown')",[id]);});
-    return {state:'human_review'};
+    if(observed.state==='queued'){this.checked.add(id);return {state:'queued'};}
+    // A not-found answer describes the supplier at lookup time, so it cannot settle a send that may still
+    // be in flight. Only a finished attempt ('outcome_unknown') may be escalated, and only when nothing
+    // moved since the state was observed; otherwise a competing worker owns the newer outcome.
+    return this.transaction(async c=>{
+      const current=await intent(c,id);
+      if(current.state!=='outcome_unknown'||current.version!==observed.version)return {state:current.state};
+      await c.query("UPDATE order_intent SET state='human_review',version=version+1 WHERE id=$1",[id]);
+      return {state:'human_review'};
+    });
   }
   private async acknowledge(id:string,ack:Acknowledgement){
     return this.transaction(async(c,x)=>{
       const row=await intent(c,id);
       if(row.state==='acknowledged')return {state:row.state};
+      // One intent keeps one external order for its lifetime; a second identity means the ledger and the
+      // durable record disagree and must not be merged automatically.
+      if(row.external_order_id&&row.external_order_id!==ack.externalOrderId)throw new Error('Conflicting external order identity');
       const expected=await ensureLines(c,x,row);
       if(!ack.externalOrderId||ack.lines.length!==expected.length||new Set(ack.lines.map(l=>l.lineId)).size!==expected.length)throw new Error('Invalid acknowledgement');
       for(const line of ack.lines){
