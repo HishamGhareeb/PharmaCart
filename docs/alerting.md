@@ -41,3 +41,18 @@ AC-017 remains NOT RUN. The criterion names a notification test using a controll
 The scheduler decides when a delivery should happen and records it. Nothing dispatches it, retries it, or reconciles a delivery whose outcome is unknown. When a channel is added it must reuse the outbox and unknown-outcome discipline the order path already has, since a push provider that accepts and then times out is the same problem as a supplier that does.
 
 Episode state lives in memory in this reducer. Persistence, per-user policy resolution and the relationship between an installation and the people who should be notified all belong to the database layer and do not exist yet.
+
+## 5. Delivery
+
+Status: implemented against a synthetic sink; database layer written and not yet executed. This section supersedes the statements in section 4 that nothing persists or dispatches an episode. AC-017 remains NOT RUN. Review findings, tests and commands: `docs/testing/synthetic-alert-delivery.md`.
+
+`packages/notifications` holds the pure decisions and the file-backed development sink; `packages/db/src/notifications.ts` and migration `0019_notification_delivery.sql` hold persistence and dispatch. The reducer in this package still makes every episode, quiet-hours and redaction decision. Delivery does not persist its in-memory state: it reads the one open episode a signal can coalesce into, under a per-installation lock, and hands the reducer just that.
+
+- **One episode, one push, in the database.** A partial unique index allows one open episode per installation and condition, the outbox allows one row per episode, and a unique index on send attempts allows one send per outbox row. `resolveAlertEpisode` closes an episode so a recurrence opens a new one with its own delivery.
+- **Quiet hours survive a restart.** A deferred delivery is a `pending` outbox row with its `deliver_at`; a worker that starts later claims it at or after that instant with `FOR UPDATE SKIP LOCKED`, and re-evaluates the window at dispatch rather than trusting scheduling time.
+- **Unknown outcomes use the order path's discipline.** The sink owns the delivery identity and answers lookups. Every first send is preceded by a lookup and by a committed send attempt. A send that fails or times out leaves the row `outcome_unknown`; it is settled by lookup or escalated to `manual_review`, never resent. A live lease is never reconciled, and dispatch stays paused after a restart until nothing unsettled remains.
+- **Everything is bounded and recorded.** Sink calls have deadlines, lock waits have `lock_timeout`, deferrals and failed lookups have limits, recovery works in batches, and every lookup and send is a row in `notification_delivery_attempt`.
+- **The redaction here is the allowlist there.** A payload may carry only the titles and body this reducer produces, read from the reducer itself; the outbox `CHECK` refuses anything else, including a JSON null in place of an identifier.
+- **Tenant isolation.** All six tables force row level security, and child rows reference their parent by identifier and tenant scope together, because a foreign key check ignores row level security.
+
+Still absent: a real channel, recipients, a scheduler, an operator surface for `held` and `manual_review` rows, and a caller. The inventory path does not yet call `acceptAlertSignal`.
