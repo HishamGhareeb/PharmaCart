@@ -14,7 +14,11 @@ export async function createLocalOidcProvider(options: { issuer?: string; enviro
   const jwk = { ...await exportJWK(privateKey), alg: 'RS256', kid: 'synthetic-local', use: 'sig' };
   return new Provider(issuer, {
     clients: [{ client_id: 'pharmacart-local', redirect_uris: ['http://127.0.0.1:3000/auth/callback'],
-      response_types: ['code'], grant_types: ['authorization_code'], token_endpoint_auth_method: 'none' }],
+      response_types: ['code'], grant_types: ['authorization_code'], token_endpoint_auth_method: 'none' },
+      // Separate public client for the local web app on port 3001. It shares no state with the client
+      // above: a different client_id and its own single loopback redirect, still PKCE-only.
+      { client_id: 'pharmacart-web-local', redirect_uris: ['http://127.0.0.1:3001/auth/callback'],
+        response_types: ['code'], grant_types: ['authorization_code'], token_endpoint_auth_method: 'none' }],
     jwks: { keys: [jwk] }, cookies: { keys: [randomBytes(32).toString('base64url')] },
     pkce: { required: () => true },
     features: {

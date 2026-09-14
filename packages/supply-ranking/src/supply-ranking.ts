@@ -5,9 +5,36 @@ export const RANKING_CRITERIA = [
   'lead_time_days',
   'fulfilment_rate',
   'supplier_id',
+  'offer_id',
 ] as const;
 
-export type RankingCriterion = (typeof RANKING_CRITERIA)[number];
+export type RankingCriterion =
+  | (typeof RANKING_CRITERIA)[number]
+  | 'available_quantity';
+
+export type SortMode = 'price' | 'lead_time' | 'rating' | 'available_quantity' | 'recommended';
+
+/**
+ * Each mode is a declared precedence, exported so a screen can show the pharmacy
+ * exactly what it sorted by. Sponsorship appears in none of them.
+ *
+ * Every mode ends `supplier_id, offer_id`. Supplier identity alone cannot
+ * separate two offers held by one supplier, so a pair tied through it compared
+ * equal and their order was whatever the feed happened to emit. Offer identity
+ * is unique once duplicates are refused, which makes each precedence a total
+ * order and the ranking reproducible from the inputs alone.
+ */
+export const SORT_CRITERIA: Readonly<Record<
+  Exclude<SortMode, 'recommended'>,
+  readonly RankingCriterion[]
+>> = {
+  price: ['line_total', 'lead_time_days', 'fulfilment_rate', 'supplier_id', 'offer_id'],
+  lead_time: ['lead_time_days', 'line_total', 'fulfilment_rate', 'supplier_id', 'offer_id'],
+  rating: ['fulfilment_rate', 'line_total', 'lead_time_days', 'supplier_id', 'offer_id'],
+  available_quantity: [
+    'available_quantity', 'line_total', 'lead_time_days', 'supplier_id', 'offer_id',
+  ],
+};
 
 export type NeedLine = Readonly<{
   needId: string;
@@ -30,22 +57,64 @@ export type SupplierOffer = Readonly<{
   termsVersion: number;
 }>;
 
+/**
+ * Unrated is a state, not a number. A supplier with too few completed orders
+ * has no fulfilment rate, and substituting one would either put an unmeasured
+ * supplier at the top of a merit ranking or bury it permanently.
+ */
+export type SupplierPerformanceRating =
+  | Readonly<{ kind: 'rated'; fulfilmentRate: string }>
+  | Readonly<{ kind: 'unrated' }>;
+
 export type SupplierStanding = Readonly<{
   supplierId: string;
   relationshipStatus: 'active' | 'suspended' | 'revoked';
   acceptedTermsVersion: number;
-  fulfilmentRate: string;
+  performance: SupplierPerformanceRating;
+}>;
+
+export type RankingFilters = Readonly<{
+  maxLeadTimeDays?: number;
+  maxUnitPrice?: string;
+  minFulfilmentRate?: string;
+  minAvailableQuantity?: string;
+  excludeSponsored?: boolean;
+}>;
+
+/**
+ * `whole_line` requires a single supplier to cover the entire need, which is
+ * the default because a split costs an extra delivery, invoice and
+ * relationship. `partial` admits any supplier that can contribute something,
+ * and is what the allocator uses when no single supplier holds enough.
+ */
+export type CoverageMode = 'whole_line' | 'partial';
+
+export type RankingOptions = Readonly<{
+  sortMode?: SortMode;
+  filters?: RankingFilters;
+  coverage?: CoverageMode;
 }>;
 
 export type ExclusionReason =
   | 'no_supplier_standing'
   | 'relationship_inactive'
   | 'terms_not_accepted'
+  | 'invalid_rating'
   | 'product_mismatch'
   | 'unit_mismatch'
+  | 'negative_price'
+  | 'invalid_lead_time'
+  | 'invalid_minimum_order'
   | 'unreadable_amount'
   | 'insufficient_stock'
   | 'below_minimum_order';
+
+export type FilterReason =
+  | 'filtered_lead_time'
+  | 'filtered_price'
+  | 'filtered_rating'
+  | 'filtered_available_quantity'
+  | 'filtered_sponsored';
 
 export type RankedOffer = Readonly<{
   offerId: string;
@@ -54,7 +123,9 @@ export type RankedOffer = Readonly<{
   unitPrice: string;
   lineTotal: string;
   leadTimeDays: number;
-  fulfilmentRate: string;
+  availableQuantity: string;
+  minimumOrderQuantity: string;
+  performance: SupplierPerformanceRating;
   sponsored: boolean;
   differsFromLeaderAt: RankingCriterion | null;
 }>;
@@ -65,45 +136,121 @@ export type ExcludedOffer = Readonly<{
   reason: ExclusionReason;
 }>;
 
+export type FilteredOffer = Readonly<{
+  offerId: string;
+  supplierId: string;
+  reason: FilterReason;
+}>;
+
 export type SupplyRanking = Readonly<{
   needId: string;
+  sortMode: SortMode;
   criteria: readonly RankingCriterion[];
+  filters: RankingFilters;
   ranked: readonly RankedOffer[];
   excluded: readonly ExcludedOffer[];
+  filtered: readonly FilteredOffer[];
   sponsoredCount: number;
+  unratedCount: number;
 }>;
+
+export type RankingRefusalReason =
+  | 'invalid_need'
+  | 'invalid_filter'
+  | 'duplicate_offer'
+  | 'duplicate_supplier_standing'
+  | 'mixed_rating_comparison'
+  | 'recommended_sort_undefined';
+
+export type SupplyRankingResult =
+  | Readonly<{ kind: 'ranked'; ranking: SupplyRanking }>
+  | Readonly<{ kind: 'refused'; reason: RankingRefusalReason; detail: string }>;
 
 type EligibleOffer = Readonly<{
   offer: SupplierOffer;
   lineTotal: string;
-  fulfilmentRate: string;
+  performance: SupplierPerformanceRating;
 }>;
 
 /**
  * Sponsorship is carried through to the result as a disclosure and takes no
  * part in the ordering. A ranking that let a paid placement outrank a cheaper
- * or faster offer would not be neutral, whatever it was called, so the sort
- * reads only the criteria in RANKING_CRITERIA.
+ * or faster offer would not be neutral, whatever it was called, so every sort
+ * mode reads only the criteria SORT_CRITERIA declares for it.
+ *
+ * Comparing a rated supplier against an unrated one is refused rather than
+ * resolved. Falling back to the identity tiebreaker for mixed pairs produces a
+ * comparator with cycles: given three offers tied on everything ahead of the
+ * rate, where A is rated 0.5, B is unrated and C is rated 0.9, identity puts A
+ * before B and B before C while rate puts C before A. A sort built on that is
+ * order-dependent and silently wrong, so the mixed case is named and refused
+ * until the ranking policy for unrated suppliers is decided.
  */
 export function rankEligibleSupply(
   need: NeedLine,
   offers: readonly SupplierOffer[],
   standings: readonly SupplierStanding[],
-): SupplyRanking {
+  options: RankingOptions = {},
+): SupplyRankingResult {
+  const sortMode = options.sortMode ?? 'price';
+  const filters = options.filters ?? {};
+  const coverage = options.coverage ?? 'whole_line';
+
+  if (sortMode === 'recommended') {
+    return {
+      kind: 'refused',
+      reason: 'recommended_sort_undefined',
+      detail: 'no disclosed weighting has been agreed for a recommended sort',
+    };
+  }
+
+  const needQuantitySign = compareDecimals(need.quantity, '0');
+  if (needQuantitySign === undefined || needQuantitySign <= 0) {
+    return { kind: 'refused', reason: 'invalid_need', detail: need.needId };
+  }
+
+  const invalidFilter = firstInvalidFilter(filters);
+  if (invalidFilter !== undefined) {
+    return { kind: 'refused', reason: 'invalid_filter', detail: invalidFilter };
+  }
+
+  const repeatedOffer = firstRepeat(offers.map((entry) => entry.offerId));
+  if (repeatedOffer !== undefined) {
+    return { kind: 'refused', reason: 'duplicate_offer', detail: repeatedOffer };
+  }
+
+  const repeatedStanding = firstRepeat(standings.map((entry) => entry.supplierId));
+  if (repeatedStanding !== undefined) {
+    return { kind: 'refused', reason: 'duplicate_supplier_standing', detail: repeatedStanding };
+  }
+
+  const criteria = SORT_CRITERIA[sortMode];
   const standingBySupplier = new Map(standings.map((entry) => [entry.supplierId, entry]));
   const eligible: EligibleOffer[] = [];
   const excluded: ExcludedOffer[] = [];
+  const filtered: FilteredOffer[] = [];
 
   for (const offer of offers) {
-    const assessed = assessOffer(need, offer, standingBySupplier.get(offer.supplierId));
+    const assessed = assessOffer(need, offer, standingBySupplier.get(offer.supplierId), coverage);
     if (typeof assessed === 'string') {
       excluded.push({ offerId: offer.offerId, supplierId: offer.supplierId, reason: assessed });
+      continue;
+    }
+
+    const filterReason = firstFailedFilter(assessed, filters);
+    if (filterReason !== undefined) {
+      filtered.push({ offerId: offer.offerId, supplierId: offer.supplierId, reason: filterReason });
       continue;
     }
     eligible.push(assessed);
   }
 
-  eligible.sort(compareEligibleOffers);
+  const mixedGroup = firstMixedRatingGroup(eligible, criteria);
+  if (mixedGroup !== undefined) {
+    return { kind: 'refused', reason: 'mixed_rating_comparison', detail: mixedGroup };
+  }
+
+  eligible.sort((left, right) => compareEligibleOffers(criteria, left, right));
 
   const leader = eligible[0];
   const ranked = eligible.map((entry, index) => Object.freeze({
@@ -113,24 +260,104 @@ export function rankEligibleSupply(
     unitPrice: entry.offer.unitPrice,
     lineTotal: entry.lineTotal,
     leadTimeDays: entry.offer.leadTimeDays,
-    fulfilmentRate: entry.fulfilmentRate,
+    availableQuantity: entry.offer.availableQuantity,
+    minimumOrderQuantity: entry.offer.minimumOrderQuantity,
+    performance: entry.performance,
     sponsored: entry.offer.sponsored,
-    differsFromLeaderAt: leader === undefined ? null : firstDifference(leader, entry),
+    differsFromLeaderAt: leader === undefined ? null : firstDifference(criteria, leader, entry),
   }));
 
-  return Object.freeze({
-    needId: need.needId,
-    criteria: RANKING_CRITERIA,
-    ranked: Object.freeze(ranked),
-    excluded: Object.freeze(excluded),
-    sponsoredCount: ranked.filter((entry) => entry.sponsored).length,
-  });
+  return {
+    kind: 'ranked',
+    ranking: Object.freeze({
+      needId: need.needId,
+      sortMode,
+      criteria,
+      filters,
+      ranked: Object.freeze(ranked),
+      excluded: Object.freeze(excluded),
+      filtered: Object.freeze(filtered),
+      sponsoredCount: ranked.filter((entry) => entry.sponsored).length,
+      unratedCount: ranked.filter((entry) => entry.performance.kind === 'unrated').length,
+    }),
+  };
+}
+
+/**
+ * Names the smallest repeated identifier rather than the first one encountered,
+ * so a malformed feed is reported identically however it was ordered. Reporting
+ * positionally would make two permutations of the same broken input disagree
+ * about which record is at fault.
+ */
+function firstRepeat(ids: readonly string[]): string | undefined {
+  const seen = new Set<string>();
+  const repeated: string[] = [];
+  for (const id of ids) {
+    if (seen.has(id)) {
+      repeated.push(id);
+    }
+    seen.add(id);
+  }
+  return repeated.sort()[0];
+}
+
+function firstInvalidFilter(filters: RankingFilters): string | undefined {
+  if (filters.maxLeadTimeDays !== undefined
+    && (!Number.isSafeInteger(filters.maxLeadTimeDays) || filters.maxLeadTimeDays < 0)) {
+    return 'maxLeadTimeDays';
+  }
+  if (filters.maxUnitPrice !== undefined && !nonNegativeAmount(filters.maxUnitPrice)) {
+    return 'maxUnitPrice';
+  }
+  if (filters.minAvailableQuantity !== undefined && !nonNegativeAmount(filters.minAvailableQuantity)) {
+    return 'minAvailableQuantity';
+  }
+  if (filters.minFulfilmentRate !== undefined && !proportion(filters.minFulfilmentRate)) {
+    return 'minFulfilmentRate';
+  }
+  return undefined;
+}
+
+/**
+ * A filter is the pharmacy narrowing its own field, which is a different thing
+ * from an offer that was never eligible. They are reported separately so a
+ * purchaser can tell "your ceiling removed two" from "two suppliers cannot
+ * sell you this at all".
+ */
+function firstFailedFilter(
+  entry: EligibleOffer,
+  filters: RankingFilters,
+): FilterReason | undefined {
+  if (filters.excludeSponsored === true && entry.offer.sponsored) {
+    return 'filtered_sponsored';
+  }
+  if (filters.maxLeadTimeDays !== undefined && entry.offer.leadTimeDays > filters.maxLeadTimeDays) {
+    return 'filtered_lead_time';
+  }
+  if (filters.maxUnitPrice !== undefined
+    && (compareDecimals(entry.offer.unitPrice, filters.maxUnitPrice) ?? 0) > 0) {
+    return 'filtered_price';
+  }
+  if (filters.minAvailableQuantity !== undefined
+    && (compareDecimals(entry.offer.availableQuantity, filters.minAvailableQuantity) ?? 0) < 0) {
+    return 'filtered_available_quantity';
+  }
+  if (filters.minFulfilmentRate !== undefined) {
+    if (entry.performance.kind === 'unrated') {
+      return 'filtered_rating';
+    }
+    if ((compareDecimals(entry.performance.fulfilmentRate, filters.minFulfilmentRate) ?? 0) < 0) {
+      return 'filtered_rating';
+    }
+  }
+  return undefined;
 }
 
 function assessOffer(
   need: NeedLine,
   offer: SupplierOffer,
   standing: SupplierStanding | undefined,
+  coverage: CoverageMode,
 ): EligibleOffer | ExclusionReason {
   if (standing === undefined) {
     return 'no_supplier_standing';
@@ -141,6 +368,9 @@ function assessOffer(
   if (offer.termsVersion > standing.acceptedTermsVersion) {
     return 'terms_not_accepted';
   }
+  if (!validRating(standing.performance)) {
+    return 'invalid_rating';
+  }
   if (offer.productId !== need.productId) {
     return 'product_mismatch';
   }
@@ -148,37 +378,130 @@ function assessOffer(
     return 'unit_mismatch';
   }
 
+  const priceSign = compareDecimals(offer.unitPrice, '0');
+  if (priceSign === undefined) {
+    return 'unreadable_amount';
+  }
+  if (priceSign < 0) {
+    return 'negative_price';
+  }
+  if (!Number.isSafeInteger(offer.leadTimeDays) || offer.leadTimeDays < 0) {
+    return 'invalid_lead_time';
+  }
+
   const lineTotal = multiplyDecimals(offer.unitPrice, need.quantity);
   const stockOrder = compareDecimals(offer.availableQuantity, need.quantity);
   const minimumOrder = compareDecimals(need.quantity, offer.minimumOrderQuantity);
-  const fulfilmentReadable = compareDecimals(standing.fulfilmentRate, '0');
-  if (
-    lineTotal === undefined
-    || stockOrder === undefined
-    || minimumOrder === undefined
-    || fulfilmentReadable === undefined
-  ) {
+  const minimumSign = compareDecimals(offer.minimumOrderQuantity, '0');
+  const stockSign = compareDecimals(offer.availableQuantity, '0');
+  const minimumAgainstStock = compareDecimals(offer.availableQuantity, offer.minimumOrderQuantity);
+  if (lineTotal === undefined || stockOrder === undefined || minimumOrder === undefined
+    || minimumSign === undefined || stockSign === undefined || minimumAgainstStock === undefined) {
     return 'unreadable_amount';
   }
-
-  if (stockOrder < 0) {
+  /**
+   * A minimum below zero is not a supplier without a minimum, it is a field
+   * nothing wrote correctly. Read literally it satisfies the gate it exists to
+   * enforce, so every later check on it passes and the offer reaches a purchase
+   * order on the strength of a value nobody meant. Zero is the honest way to
+   * say there is no minimum, and it is still accepted.
+   */
+  if (minimumSign < 0) {
+    return 'invalid_minimum_order';
+  }
+  if (coverage === 'partial' ? stockSign <= 0 : stockOrder < 0) {
     return 'insufficient_stock';
   }
-  if (minimumOrder < 0) {
+  if (minimumOrder < 0 || minimumAgainstStock < 0) {
     return 'below_minimum_order';
   }
 
-  return { offer, lineTotal, fulfilmentRate: standing.fulfilmentRate };
+  return { offer, lineTotal, performance: standing.performance };
 }
 
-function compareEligibleOffers(left: EligibleOffer, right: EligibleOffer): number {
-  for (const criterion of RANKING_CRITERIA) {
+function validRating(performance: SupplierPerformanceRating): boolean {
+  return performance.kind === 'unrated' || proportion(performance.fulfilmentRate);
+}
+
+function proportion(value: string): boolean {
+  const lower = compareDecimals(value, '0');
+  const upper = compareDecimals(value, '1');
+  return lower !== undefined && upper !== undefined && lower >= 0 && upper <= 0;
+}
+
+function nonNegativeAmount(value: string): boolean {
+  const sign = compareDecimals(value, '0');
+  return sign !== undefined && sign >= 0;
+}
+
+/**
+ * Only the criteria ahead of the rate can separate two offers before the rate
+ * is consulted, so those are what decide whether a mixed pair ever meets. When
+ * the rate leads the precedence there is nothing ahead of it and any mix at all
+ * is refused, which is the honest answer: sorting by rating is not defined
+ * while some suppliers have none.
+ */
+function firstMixedRatingGroup(
+  eligible: readonly EligibleOffer[],
+  criteria: readonly RankingCriterion[],
+): string | undefined {
+  const rateIndex = criteria.indexOf('fulfilment_rate');
+  if (rateIndex === -1) {
+    return undefined;
+  }
+  const preceding = criteria.slice(0, rateIndex);
+
+  const groups = new Map<string, { rated: boolean; unrated: boolean }>();
+  for (const entry of eligible) {
+    const key = preceding.map((criterion) => criterionKey(criterion, entry)).join('@');
+    const seen = groups.get(key) ?? { rated: false, unrated: false };
+    if (entry.performance.kind === 'rated') {
+      seen.rated = true;
+    } else {
+      seen.unrated = true;
+    }
+    groups.set(key, seen);
+  }
+
+  return [...groups.entries()]
+    .filter(([, seen]) => seen.rated && seen.unrated)
+    .map(([key]) => key)
+    .sort()[0];
+}
+
+function criterionKey(criterion: RankingCriterion, entry: EligibleOffer): string {
+  if (criterion === 'line_total') {
+    return entry.lineTotal;
+  }
+  if (criterion === 'lead_time_days') {
+    return String(entry.offer.leadTimeDays);
+  }
+  if (criterion === 'available_quantity') {
+    return entry.offer.availableQuantity;
+  }
+  if (criterion === 'offer_id') {
+    return entry.offer.offerId;
+  }
+  return entry.offer.supplierId;
+}
+
+/**
+ * Falls through to offer identity, which every precedence already ends with, so
+ * the comparator returns zero only for an offer against itself. Duplicate offer
+ * identifiers are refused before this runs, which is what makes that true.
+ */
+function compareEligibleOffers(
+  criteria: readonly RankingCriterion[],
+  left: EligibleOffer,
+  right: EligibleOffer,
+): number {
+  for (const criterion of criteria) {
     const order = compareCriterion(criterion, left, right);
     if (order !== 0) {
       return order;
     }
   }
-  return 0;
+  return compareIds(left.offer.offerId, right.offer.offerId);
 }
 
 function compareCriterion(
@@ -192,14 +515,27 @@ function compareCriterion(
   if (criterion === 'lead_time_days') {
     return Math.sign(left.offer.leadTimeDays - right.offer.leadTimeDays);
   }
-  if (criterion === 'fulfilment_rate') {
-    return compareDecimals(right.fulfilmentRate, left.fulfilmentRate) ?? 0;
+  if (criterion === 'available_quantity') {
+    return compareDecimals(right.offer.availableQuantity, left.offer.availableQuantity) ?? 0;
   }
-  return compareSupplierIds(left.offer.supplierId, right.offer.supplierId);
+  if (criterion === 'fulfilment_rate') {
+    if (left.performance.kind !== 'rated' || right.performance.kind !== 'rated') {
+      return 0;
+    }
+    return compareDecimals(right.performance.fulfilmentRate, left.performance.fulfilmentRate) ?? 0;
+  }
+  if (criterion === 'offer_id') {
+    return compareIds(left.offer.offerId, right.offer.offerId);
+  }
+  return compareIds(left.offer.supplierId, right.offer.supplierId);
 }
 
-function firstDifference(leader: EligibleOffer, candidate: EligibleOffer): RankingCriterion | null {
-  for (const criterion of RANKING_CRITERIA) {
+function firstDifference(
+  criteria: readonly RankingCriterion[],
+  leader: EligibleOffer,
+  candidate: EligibleOffer,
+): RankingCriterion | null {
+  for (const criterion of criteria) {
     if (compareCriterion(criterion, leader, candidate) !== 0) {
       return criterion;
     }
@@ -207,7 +543,7 @@ function firstDifference(leader: EligibleOffer, candidate: EligibleOffer): Ranki
   return null;
 }
 
-function compareSupplierIds(left: string, right: string): number {
+function compareIds(left: string, right: string): number {
   if (left === right) {
     return 0;
   }
