@@ -20,7 +20,9 @@ test('AC-006/009/010/014: timeout lookup, partial quantities, duplicate receipt 
   const supplier=new FakeSupplier(join(directory,'ledger.json'),'timeout_after_accept');
   const scope={subject:'synthetic:user:a',organisationId:ids.a,branchId:ids.branchA};
   const transaction=<T>(callback: Parameters<typeof withTransaction<T>>[4])=>withTransaction(pool,scope.subject,scope.organisationId,scope.branchId,callback);
-  const docker=(args:string[])=>execFileSync('docker',['compose','-p','pharmacart','-f','infra/compose.yaml','exec','-T','postgres',...args],{windowsHide:true,stdio:'pipe',timeout:30000});
+  // Restore can exceed 30 seconds on Windows while the full serial database gate is under load.
+  // Keep the operation bounded, but leave enough headroom for Docker Desktop to flush the database.
+  const docker=(args:string[])=>execFileSync('docker',['compose','-p','pharmacart','-f','infra/compose.yaml','exec','-T','postgres',...args],{windowsHide:true,stdio:'pipe',timeout:120000});
   try {
     await seedProcurement();
     const quote=await transaction((c,x)=>createQuote(c,x,{branchId:ids.branchA,lines:[{needId:ids.needA,needVersion:1,quantity:'2',unit:'box'}],constraints:{supplierIds:[],paymentTerm:'cash'}}));

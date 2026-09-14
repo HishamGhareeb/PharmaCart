@@ -630,7 +630,9 @@ test('AC-014 shape: an actual database restore reuses the retained stock receipt
   let pool = await resetDatabase();
   const directory = await mkdtemp(join(process.cwd(), 'tmp-writeback-'));
   t.after(() => rm(directory, { recursive: true, force: true }));
-  const docker = (args: string[]) => execFileSync('docker', ['compose', '-p', 'pharmacart', '-f', 'infra/compose.yaml', 'exec', '-T', 'postgres', ...args], { windowsHide: true, stdio: 'pipe', timeout: 30_000 });
+  // A restore can exceed 30 seconds on Windows after the full serial database gate has loaded Docker.
+  // Keep it finite while allowing Docker Desktop enough time to flush and rebuild the database.
+  const docker = (args: string[]) => execFileSync('docker', ['compose', '-p', 'pharmacart', '-f', 'infra/compose.yaml', 'exec', '-T', 'postgres', ...args], { windowsHide: true, stdio: 'pipe', timeout: 120_000 });
   try {
     await preconditions();
     const path = join(directory, 'stock', 'sink.json');
