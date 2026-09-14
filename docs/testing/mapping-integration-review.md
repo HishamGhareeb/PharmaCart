@@ -35,3 +35,5 @@ Coordinator should register `registerMappingRoutes(app, pool, verifier)` inside 
 
 Reviewed additive migrations 0013, 0014 and 0015 were applied in order to pharmacart_test only. The first mapping database run passed three cases and failed the candidates case at OIDC login: the fixture used unsupported synthetic:user:c. The fixture now reuses allowed synthetic:user:b with a separate purchaser membership in A; no authentication rule changed. Rerunning only that case passed. All four database cases therefore have passing evidence, including direct runtime provenance inserts against foreign needs and mismatched products. Original failure retained in tmp/mapping-integration-db.txt; targeted pass in tmp/mapping-candidates-recheck.txt. Development migrations remain at 0012. API registration and OpenAPI descriptions are still pending.
 
+Update 2026-09-14: registration and OpenAPI descriptions are done in `api-registration-openapi.md`; `mappingApi` no longer re-registers the module.
+

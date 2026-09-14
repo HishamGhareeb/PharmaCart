@@ -34,6 +34,59 @@ const quoteLine={type:'object',additionalProperties:false,required:['needId','ne
   tax:money("Line tax. The synthetic cash tax-exempt rule always emits '0'."),
   fees:money("Line fees. The synthetic cash tax-exempt rule always emits '0'."),
   net:money('Payable line amount, equal to gross under the synthetic rule.')}};
+const needStatus=['open','quoted','covered','closed'];
+const orderState=['queued','submitting','outcome_unknown','acknowledged','rejected','human_review'];
+const storedPattern='^(?:0|[1-9][0-9]*)(?:\\.[0-9]+)?$';
+const uncertainty={oneOf:[
+  {type:'object',additionalProperties:false,required:['safeToRetry','nextAction'],properties:{safeToRetry:{const:false},nextAction:{const:'reconciliation_required'}}},
+  {type:'null'}],
+  description:'Present while the state is submitting, outcome_unknown or human_review, and null otherwise. An uncertain outcome is never reported as safe to retry.'};
+// Bounds mirrored from packages/db/src/lists.ts (MAX_LIMIT, MAX_CURSOR_LENGTH, MAX_SALE_UNIT_LENGTH) and
+// packages/db/src/mapping.ts (MAX_MAPPING_CANDIDATES); apps/api/test/response-contracts.test.ts asserts they agree.
+const MAX_PAGE_ITEMS=100;
+const MAX_CURSOR_LENGTH=512;
+const MAX_SALE_UNIT_LENGTH=64;
+const MAX_MAPPING_CANDIDATES=20;
+const cursorPattern='^[A-Za-z0-9_-]+$';
+const count=(description:string)=>({type:'integer',minimum:0,maximum:Number.MAX_SAFE_INTEGER,description});
+const page=(item:unknown,description:string)=>({type:'object',additionalProperties:false,required:['items','nextCursor'],description,properties:{
+  items:{type:'array',maxItems:MAX_PAGE_ITEMS,items:item,description:'At most the requested limit, in ascending identifier order. No total or count is ever reported.'},
+  nextCursor:{type:['string','null'],minLength:1,maxLength:MAX_CURSOR_LENGTH,pattern:cursorPattern,description:'Opaque continuation bound to the resolved organisation, branch, resource and status filter. Null on the last page. A cursor from any other scope is refused with 400 INVALID_CURSOR, indistinguishable from a malformed one.'}}});
+const needSummary={type:'object',additionalProperties:false,required:['id','productRef','quantity','outstandingQuantity','status','version','mappingStatus','productId','saleUnit'],properties:{
+  id:uuid,productRef:{type:'string',minLength:1,description:'Source product reference carried from the inventory target.'},
+  quantity:stored('Stored requested_quantity as numeric text, identical to GET /v1/needs/{id}.'),
+  outstandingQuantity:{type:['string','null'],pattern:storedPattern,description:"The stored quantity while open, '0' once covered or closed, and null for a status whose outstanding demand the schema does not record (quoted). Never a fabricated zero."},
+  status:{enum:needStatus},
+  version:counter('Need version, identical to GET /v1/needs/{id}.'),
+  mappingStatus:{enum:['unmapped','unverified','verified'],description:'verified only when the tenant mapping and the catalogue product it names are both verified.'},
+  productId:{type:['string','null'],format:'uuid',description:'Disclosed only for a verified mapping; null otherwise.'},
+  saleUnit:{type:['string','null'],minLength:1,maxLength:MAX_SALE_UNIT_LENGTH,description:'Catalogue sale unit, disclosed only for a verified mapping and only when stored as a plain string; never derived or converted.'}}};
+const orderSummary={type:'object',additionalProperties:false,required:['id','state','version','externalClientRef','externalOrderId','lines','uncertainty'],properties:{
+  id:uuid,state:{enum:orderState},
+  version:counter('Intent version, identical to GET /v1/orders/{id}.'),
+  externalClientRef:{type:'string',minLength:1,description:'Stable client reference, identical to GET /v1/orders/{id}.'},
+  externalOrderId:{type:['string','null'],minLength:1,description:'Supplier order identity. Null until an acknowledgement is recorded.'},
+  lines:{type:'object',additionalProperties:false,required:['total','settled','awaitingReceipt'],description:'Line counts only. Quantities are never summed because lines may carry different sale units; per-line quantities stay on GET /v1/orders/{id}.',properties:{
+    total:count('Lines materialised for the intent; 0 while queued.'),
+    settled:count('Lines whose accepted plus rejected equals ordered and whose received equals accepted.'),
+    awaitingReceipt:count('Lines with received below shipped.')}},
+  uncertainty}};
+const exactText=(description:string)=>({type:'string',minLength:1,pattern:'^\\S(?:[\\s\\S]*\\S)?$',description});
+const catalogueIdentity={type:'object',additionalProperties:false,required:['brand','manufacturer','strength','dosageForm','packSize','saleUnit'],description:'Complete verified catalogue pack identity. A pack missing any field is never offered.',properties:{
+  brand:exactText('Brand name.'),manufacturer:exactText('Manufacturer.'),strength:exactText('Strength as recorded.'),dosageForm:exactText('Dosage form.'),
+  packSize:{type:'object',additionalProperties:false,required:['value','unit'],properties:{
+    value:{type:'string',maxLength:32,pattern:'^(?:0\\.[0-9]*[1-9]|[1-9][0-9]*(?:\\.[0-9]*[1-9])?)$',description:'Positive canonical decimal string.'},
+    unit:exactText('Unit of the pack size.')}},
+  saleUnit:exactText('Unit the pack is sold in; compared by exact equality, never converted.')}};
+// Served as the Fastify body schema by apps/api/src/mapping-routes.ts, so the document and the route cannot diverge.
+export const mappingCommandSchema={type:'object',additionalProperties:false,required:['needVersion','productId'],description:'One explicit human selection. Nothing is inferred, folded or converted.',properties:{
+  needVersion:{type:'integer',minimum:1,maximum:2147483647,description:'Need version the selection was made against; a different current version is refused with 409 NEED_VERSION_CONFLICT.'},
+  productId:{type:'string',pattern:'^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$',description:'Chosen verified catalogue pack.'},
+  suppliedUnit:{type:'string',minLength:1,maxLength:32,description:'Required only when the need carries no authoritative unit metadata, and then equal to the chosen sale unit exactly.'}}};
+const listQuery=(statuses:readonly string[],resource:string)=>[
+  {name:'limit',in:'query',required:false,description:'Page size from 1 to 100 as a plain decimal string; 25 when omitted.',schema:{type:'string',pattern:'^(?:[1-9][0-9]?|100)$'}},
+  {name:'status',in:'query',required:false,description:`Exact ${resource} status filter. Any other value is refused with 400 INVALID_REQUEST.`,schema:{enum:statuses}},
+  {name:'cursor',in:'query',required:false,description:'nextCursor from the previous page of the same resource, scope and status filter.',schema:{type:'string',minLength:1,maxLength:MAX_CURSOR_LENGTH,pattern:cursorPattern}}];
 const orderLine={type:'object',additionalProperties:false,required:['id','productIdentity','ordered','accepted','rejected','shipped','received'],properties:{
   id:uuid,productIdentity:identity,
   ordered:stored('Quantity ordered from the supplier for this line.'),
@@ -57,7 +110,7 @@ const schemas={
     organisationKind:{enum:['pharmacy','supplier'],description:'Purchasing and receipt routes additionally require a pharmacy organisation.'},
     branchId:uuid,
     allowedBranchIds:{type:'array',minItems:1,maxItems:1,items:uuid,description:'Exactly the requested branch: one transaction never widens beyond the branch its row level security policy is set to.'},
-    role:{enum:['pharmacy_owner','purchaser','receiver','supplier_operator','supplier_administrator','support'],description:'Active membership role. Quoting and approval require pharmacy_owner or purchaser; receipts require pharmacy_owner or receiver.'},
+    role:{enum:['pharmacy_owner','purchaser','receiver','supplier_operator','supplier_administrator','support'],description:'Active membership role. Quoting and approval require pharmacy_owner or purchaser; receipts require pharmacy_owner or receiver. Need and order lists and mapping candidates require pharmacy_owner or purchaser; binding a mapping requires pharmacy_owner.'},
     membershipVersion:counter('Version of the active membership row used for this request.')}},
   NeedView:{type:'object',additionalProperties:false,required:['id','productRef','quantity','status','version'],description:'Single need in the requested branch. A need outside the scope is indistinguishable from a missing one.',properties:{
     id:uuid,productRef:{type:'string',minLength:1,description:'Source product reference carried from the inventory target.'},
@@ -93,11 +146,29 @@ const schemas={
     externalOrderId:{type:['string','null'],minLength:1,description:'Supplier order identity. Null until an acknowledgement is recorded, and never replaced afterwards.'},
     version:counter('Intent version, incremented by every state transition.'),
     lines:{type:'array',maxItems:100,items:orderLine,description:'Empty until the worker materialises the lines when it claims the intent for submission.'},
-    uncertainty:{oneOf:[
-      {type:'object',additionalProperties:false,required:['safeToRetry','nextAction'],properties:{safeToRetry:{const:false},nextAction:{const:'reconciliation_required'}}},
-      {type:'null'}],
-      description:'Present while the state is submitting, outcome_unknown or human_review, and null otherwise. An uncertain outcome is never reported as safe to retry.'}}},
+    uncertainty}},
   ReceiptAcknowledgement:{type:'object',additionalProperties:false,required:['id'],description:'Identity of the stored receipt. Repeating the same reference and lines returns the same identity; the same reference with different lines is refused with 409 IDEMPOTENCY_KEY_REUSED.',properties:{id:uuid}},
+  NeedPage:page(needSummary,'One keyset page of needs in the resolved branch. Row level security is the only tenant predicate.'),
+  OrderPage:page(orderSummary,'One keyset page of order intents in the resolved branch. No counterparty, quote or pricing is disclosed.'),
+  MappingCandidates:{type:'object',additionalProperties:false,required:['needId','needVersion','needStatus','productRef','currentProductId','authoritativeUnit','unitBasis','selectionRequired','ambiguous','truncated','unselectableExcluded','candidates'],description:'Verified shared catalogue packs a person may choose for one need. It carries pack identity only: no offer, price or supplier, and no candidate is marked as chosen.',properties:{
+    needId:uuid,needVersion:counter('Need version to send back as needVersion when binding.'),
+    needStatus:{enum:needStatus},
+    productRef:{type:'string',minLength:1,description:'Source product reference of the need.'},
+    currentProductId:{type:['string','null'],format:'uuid',description:'Product of the current mapping, or null when the need is unmapped.'},
+    authoritativeUnit:{type:['string','null'],minLength:1,description:'Unit stated by the connector target that produced the need, or null when none is recorded.'},
+    unitBasis:{enum:['authoritative_metadata','explicit_supplied_unit_required'],description:'explicit_supplied_unit_required means a bind must state suppliedUnit equal to the chosen sale unit.'},
+    selectionRequired:{const:true,description:'Always true: even a single eligible candidate is a human decision.'},
+    ambiguous:{type:'boolean',description:'True when more than one candidate is eligible.'},
+    truncated:{type:'boolean',description:'True when the catalogue window exceeded the candidate bound, so the list is not exhaustive.'},
+    unselectableExcluded:{type:'integer',minimum:0,maximum:MAX_MAPPING_CANDIDATES+1,description:'Rows in the fetched catalogue window withheld for an incomplete identity or a different unit.'},
+    candidates:{type:'array',maxItems:MAX_MAPPING_CANDIDATES,items:{type:'object',additionalProperties:false,required:['productId','identity'],properties:{productId:uuid,identity:catalogueIdentity}},description:'Ascending product identifier order.'}}},
+  MappingResult:{type:'object',additionalProperties:false,required:['needId','needVersion','mapId','productId','mapStatus','unit','unitBasis','decisionId','repeated'],description:'The recorded explicit human mapping decision. 201 records a new mapping and increments the need version, which invalidates quotes taken at the earlier version; 200 reports the same selection repeated at the current version, with nothing changed.',properties:{
+    needId:uuid,needVersion:counter('Need version after the request.'),mapId:uuid,productId:uuid,
+    mapStatus:{const:'verified'},
+    unit:exactText('Unit the decision is recorded against, equal to the catalogue sale unit.'),
+    unitBasis:{enum:['authoritative_metadata','explicit_supplied_unit'],description:'Whether the unit came from connector metadata or from the suppliedUnit the request stated.'},
+    decisionId:{...uuid,description:'Provenance decision row. The repository returns one on both outcomes.'},
+    repeated:{type:'boolean',description:'False with 201, true with 200.'}}},
 };
 export const receiptCommandSchema={type:'object',additionalProperties:false,required:['reference','lines'],properties:{reference:{type:'string',minLength:1,maxLength:128},lines:{type:'array',minItems:1,maxItems:100,items:{type:'object',additionalProperties:false,required:['lineId','quantity'],properties:{lineId:{type:'string',pattern:'^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$'},quantity:{type:'string',maxLength:24,pattern:'^(?:0\\.[0-9]*[1-9]|[1-9][0-9]*(?:\\.[0-9]*[1-9])?)$'}}}}}};
 export const approvalCommandSchema={type:'object',additionalProperties:false,required:['quoteVersion'],properties:{quoteVersion:{type:'integer',minimum:1,maximum:Number.MAX_SAFE_INTEGER}}};
@@ -107,10 +178,14 @@ export function renderOpenapi(){return JSON.stringify({openapi:'3.1.0',info:{tit
     '/health':{get:{operationId:'getHealth',security:[],responses:responses(200,'HealthStatus','Process liveness')}},
     '/openapi.json':{get:{operationId:'getOpenapi',security:[],responses:responses(200,'OpenapiDocument','The generated contract document')}},
     '/v1/context':{get:{operationId:'getContext',parameters:scope,responses:responses(200,'TenantContext','Resolved membership scope for the request')}},
+    '/v1/needs':{get:{operationId:'listNeeds',description:'Requires a pharmacy organisation and the role pharmacy_owner or purchaser; any other principal is refused with 403 FORBIDDEN, worded exactly as a denied membership. A malformed query is refused with 400 INVALID_REQUEST and an unusable cursor with 400 INVALID_CURSOR, the latter only after authentication.',parameters:[...scope,...listQuery(needStatus,'need')],responses:responses(200,'NeedPage','One page of needs inside the resolved scope')}},
     '/v1/needs/{id}':{get:{operationId:'getNeed',parameters:[...scope,id],responses:responses(200,'NeedView','The requested need inside the resolved scope')}},
+    '/v1/needs/{id}/mapping-candidates':{get:{operationId:'getMappingCandidates',description:'Requires a pharmacy organisation and the role pharmacy_owner or purchaser. A need outside the scope is refused with 404 NOT_FOUND, indistinguishable from a missing one; conflicting connector units are refused with 409 AMBIGUOUS_NEED_UNIT.',parameters:[...scope,id],responses:responses(200,'MappingCandidates','Selectable catalogue packs for the need')}},
+    '/v1/needs/{id}/mapping':{post:{operationId:'bindNeedMapping',description:'Requires a pharmacy organisation and the role pharmacy_owner only. Refusals: 404 NOT_FOUND; 409 NEED_VERSION_CONFLICT, NEED_NOT_OPEN, AMBIGUOUS_NEED_UNIT or MAPPING_DECISION_CONFLICT; 422 CATALOGUE_UNVERIFIED, CATALOGUE_IDENTITY_INCOMPLETE, SUPPLIED_UNIT_REQUIRED or UNIT_MISMATCH.',parameters:[...scope,id],requestBody:body(mappingCommandSchema),responses:{...responses(201,'MappingResult','New explicit mapping decision recorded'),'200':{description:'Same selection repeated at the current need version; nothing changed',headers:correlation,content:{'application/json':{schema:ref('MappingResult')}}}}}},
     '/v1/inventory':{post:{operationId:'ingestInventory',description:'Installation scope derives from the verified subject. Durable processing completes before acknowledgement.',requestBody:body(inventoryCommandSchema),responses:responses(202,'InventoryAcceptance','Snapshot event processed durably')}},
     '/v1/quotes':{post:{operationId:'createQuote',parameters:scope,requestBody:body(quoteCommandSchema),responses:responses(201,'Quote','Binding quote created')}},
     '/v1/quotes/{id}/approve':{post:{operationId:'approveQuote',parameters:[...scope,id,{name:'Idempotency-Key',in:'header',required:true,schema:{type:'string',pattern:'^[A-Za-z0-9_-]{1,128}$'}}],requestBody:body(approvalCommandSchema),responses:{...responses(202,'ApprovalResult','Approval recorded and supplier submission queued'),'200':{description:'Already approved quote under a new idempotency key',headers:correlation,content:{'application/json':{schema:ref('ApprovalResult')}}}}}},
+    '/v1/orders':{get:{operationId:'listOrders',description:'Requires a pharmacy organisation and the role pharmacy_owner or purchaser; any other principal is refused with 403 FORBIDDEN, worded exactly as a denied membership. A malformed query is refused with 400 INVALID_REQUEST and an unusable cursor with 400 INVALID_CURSOR, the latter only after authentication.',parameters:[...scope,...listQuery(orderState,'order intent')],responses:responses(200,'OrderPage','One page of order intents inside the resolved scope')}},
     '/v1/orders/{id}':{get:{operationId:'getOrder',parameters:[...scope,id],responses:responses(200,'OrderDetail','The requested order intent inside the resolved scope')}},
     '/v1/orders/{id}/receipts':{post:{operationId:'confirmReceipt',parameters:[...scope,id],requestBody:body(receiptCommandSchema),responses:responses(200,'ReceiptAcknowledgement','Receipt recorded and queued for writeback')}},
   },
