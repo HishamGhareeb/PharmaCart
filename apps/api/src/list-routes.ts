@@ -19,18 +19,18 @@ import {
 } from '../../../packages/db/src/lists.ts';
 import {
   MembershipAccessDeniedError,
-  withTransaction,
+  type MembershipRole,
   type RuntimeClient,
   type TenantContext,
 } from '../../../packages/db/src/runtime.ts';
 import { ApiError } from './errors.ts';
-import { authenticate, selector, type TokenVerifier } from './tenant-api.ts';
+import { poolScope, type TenantScope, type TokenVerifier } from './request-auth.ts';
 
 /**
  * Tenant-scoped list reads: `GET /v1/needs` and `GET /v1/orders`.
  *
- * This module is not registered by `buildTenantApi`. The coordinator adds the single documented line
- * after review; see docs/testing/tenant-list-api.md.
+ * `buildTenantApi` registers this module; the operations are described by `listNeeds` and `listOrders`
+ * in packages/contracts/openapi.json. See docs/testing/api-registration-openapi.md.
  *
  * `GET /v1/scopes` is deliberately absent. Enumerating a user's memberships needs a read that is not
  * yet scoped by `app.organisation_id`/`app.branch_id`, which the existing
@@ -45,10 +45,20 @@ import { authenticate, selector, type TokenVerifier } from './tenant-api.ts';
  * bearer token, validates the tenant selectors and runs the operation inside `withTransaction`, so
  * row level security is established before a single list row is read. Tests inject their own.
  */
-export type ListScope = <T>(
-  request: FastifyRequest,
-  operation: (client: RuntimeClient, context: TenantContext) => Promise<T>,
-) => Promise<T>;
+export type ListScope = TenantScope;
+
+/**
+ * Roles admitted to either list. OPEN DECISION for human review: lists.ts leaves the role inside a
+ * pharmacy undecided. The reviewed PostgreSQL evidence (packages/db/test/lists.test.ts) lists as a
+ * pharmacy_owner and as a purchaser, so both are admitted; nothing encodes receiver or support, so
+ * they are refused until a person decides. This is the existing quote and mapping-read role set.
+ */
+const LIST_ROLES: readonly MembershipRole[] = ['pharmacy_owner', 'purchaser'];
+
+/** The refusal is the membership refusal verbatim, so it discloses neither the role nor the reason. */
+function requireListRole(context: TenantContext): void {
+  if (!LIST_ROLES.includes(context.role)) throw new ApiError(403, 'FORBIDDEN', 'The selected scope is not permitted.');
+}
 
 export type ListRepository = Readonly<{
   listNeeds(client: RuntimeClient, principal: ListPrincipal, query: ListQuery): Promise<Page<NeedSummary>>;
@@ -71,19 +81,6 @@ const listQuerySchema = {
     cursor: { type: 'string', maxLength: MAX_CURSOR_LENGTH },
   },
 } as const;
-
-function poolScope(pool: Pool, verifier: TokenVerifier): ListScope {
-  return async <T>(
-    request: FastifyRequest,
-    operation: (client: RuntimeClient, context: TenantContext) => Promise<T>,
-  ): Promise<T> => {
-    const identity = await authenticate(request, verifier);
-    // Selectors are validated before a connection is taken, exactly as the individual routes do.
-    const organisationId = selector(request.headers['x-organisation-id']);
-    const branchId = selector(request.headers['x-branch-id']);
-    return withTransaction(pool, identity.subject, organisationId, branchId, operation);
-  };
-}
 
 function asApiError(error: unknown): unknown {
   // 5xx ListErrors are internal invariants; they fall through to the stable redacted handler.
@@ -110,6 +107,7 @@ export function registerListRoutes(
       return await scope<Page<NeedSummary> | Page<OrderSummary>>(request, (client, context) => {
         // A list is a pharmacy-side read; refuse the wrong side of the market before anything else.
         requirePharmacyPrincipal(context);
+        requireListRole(context);
         // Authoritative: the cursor is bound to the membership the transaction resolved, not to the
         // header the caller sent, so a cursor can never move a request into another scope. It is
         // judged only here, so an unauthenticated caller learns nothing about a cursor's scope.

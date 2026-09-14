@@ -10,7 +10,6 @@ import type { Pool } from 'pg';
 import { createAccessTokenVerifier } from '../../auth/src/verify-access-token.ts';
 import { localIdentity } from '../../auth/test/local-identity.ts';
 import { buildTenantApi, type TokenVerifier } from '../../../apps/api/src/tenant-api.ts';
-import { registerMappingRoutes } from '../../../apps/api/src/mapping-routes.ts';
 import { MAX_MAPPING_CANDIDATES } from '../src/mapping.ts';
 import { withTransaction } from '../src/runtime.ts';
 import { seedProcurement } from './procurement-fixture.ts';
@@ -59,14 +58,12 @@ async function seedMappingFixture() {
 }
 
 /**
- * The coordinator registers the mapping module inside buildTenantApi after review. Registering it on
- * the built instance here drives the same route tree through the same authentication, tenant
- * transaction and error plumbing as the reviewed integration will.
+ * buildTenantApi registers the mapping module itself, so these cases drive the production route tree
+ * through the same authentication, tenant transaction and error plumbing. Registering the module a
+ * second time would be refused as a duplicate route.
  */
 function mappingApi(pool: Pool, verifier: TokenVerifier) {
-  const app = buildTenantApi(pool, verifier);
-  registerMappingRoutes(app, pool, verifier);
-  return app;
+  return buildTenantApi(pool, verifier);
 }
 
 /**

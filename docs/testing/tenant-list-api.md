@@ -448,6 +448,11 @@ NOT REFUSED : uppercase id {"limit":25,"status":null,"after":"40000000-0000-4000
 
 ## 6. Deployment blockers and limitations
 
+> Update 2026-09-14: limitations 1, 3, 4 and 12 are addressed by `api-registration-openapi.md` (routes
+> registered, OpenAPI description with `INVALID_CURSOR` and nullable `outstandingQuantity`). Limitation 5
+> changed: lists now admit `pharmacy_owner` or `purchaser` only, pending human role review. Section 1.1's
+> hook is applied and `buildListApi` no longer re-registers. The rest of this report is historical.
+
 Reported concretely. **This is not production-ready, and nothing here is a substitute for independent
 coordinator review before integration.**
 

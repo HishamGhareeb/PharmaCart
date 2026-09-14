@@ -1,9 +1,11 @@
 import type { FastifyRequest } from 'fastify';
 import type { Pool } from 'pg';
-import type { VerifiedAccessToken } from '../../../packages/auth/src/verify-access-token.ts';
 import { MembershipAccessDeniedError, withTransaction, type RuntimeClient, type TenantContext } from '../../../packages/db/src/runtime.ts';
 import { buildApp } from './app.ts';
 import { ApiError } from './errors.ts';
+import { registerListRoutes } from './list-routes.ts';
+import { registerMappingRoutes } from './mapping-routes.ts';
+import { authenticate, selector, type TokenVerifier } from './request-auth.ts';
 import { ingestInventory, InventoryError, type InventoryCommand } from '../../../packages/db/src/inventory.ts';
 import { inventoryCommandSchema } from '../../../packages/contracts/src/inventory-schema.ts';
 import { quoteCommandSchema } from '../../../packages/contracts/src/quote-schema.ts';
@@ -11,18 +13,8 @@ import { createQuote, approveQuote, ProcurementError, type QuoteCommand } from '
 import { confirmReceipt } from '../../../packages/db/src/orders.ts';
 import { approvalCommandSchema, receiptCommandSchema } from '../../../packages/contracts/scripts/openapi.ts';
 
-export type TokenVerifier = { verifyAccessToken(token: string): Promise<VerifiedAccessToken> };
-const uuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/;
-export function selector(value: unknown): string {
-  if (typeof value !== 'string' || !uuid.test(value)) throw new ApiError(400, 'INVALID_REQUEST', 'A canonical UUID selector is required.');
-  return value;
-}
-export async function authenticate(request: FastifyRequest, verifier: TokenVerifier) {
-  const header = request.headers.authorization;
-  if (!header?.startsWith('Bearer ') || header.length > 16400) throw new ApiError(401, 'UNAUTHENTICATED', 'A valid access token is required.');
-  try { return await verifier.verifyAccessToken(header.slice(7)); }
-  catch { throw new ApiError(401, 'UNAUTHENTICATED', 'A valid access token is required.'); }
-}
+// Re-exported so existing importers of the tenant API keep one entry point.
+export { authenticate, selector, type TokenVerifier } from './request-auth.ts';
 export function buildTenantApi(pool: Pool, verifier: TokenVerifier) {
   const app = buildApp();
   async function member<T>(request: FastifyRequest, operation: (client: RuntimeClient, context: TenantContext) => Promise<T>) {
@@ -67,5 +59,9 @@ export function buildTenantApi(pool: Pool, verifier: TokenVerifier) {
     if (!result.rowCount) throw new ApiError(404, 'NOT_FOUND', 'The requested resource was not found.');
     return result.rows[0];
   }));
+  // GET /v1/needs, GET /v1/orders, GET /v1/needs/:id/mapping-candidates and POST /v1/needs/:id/mapping.
+  // Both modules resolve membership through the same authenticated tenant transaction as the routes above.
+  registerListRoutes(app, pool, verifier);
+  registerMappingRoutes(app, pool, verifier);
   return app;
 }

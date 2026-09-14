@@ -4,7 +4,6 @@ import { test } from 'node:test';
 import type { Pool } from 'pg';
 
 import { buildTenantApi, type TokenVerifier } from '../../../apps/api/src/tenant-api.ts';
-import { registerListRoutes } from '../../../apps/api/src/list-routes.ts';
 import { createAccessTokenVerifier } from '../../auth/src/verify-access-token.ts';
 import { localIdentity } from '../../auth/test/local-identity.ts';
 import { ListError, listNeeds, listOrders, type ListPrincipal } from '../src/lists.ts';
@@ -28,14 +27,11 @@ const compareUuid = (left: string, right: string): number => {
 };
 
 /**
- * The registration hook the coordinator applies after review. This module never edits
- * apps/api/src/tenant-api.ts; the single added line is reproduced here so the integration run
- * exercises exactly what integration will do.
+ * buildTenantApi registers the list routes itself, so the integration run exercises the production
+ * route tree unchanged. Registering the module a second time would be refused as a duplicate route.
  */
 function buildListApi(pool: Pool, verifier: TokenVerifier) {
-  const app = buildTenantApi(pool, verifier);
-  registerListRoutes(app, pool, verifier);
-  return app;
+  return buildTenantApi(pool, verifier);
 }
 
 async function seedListFixtures() {

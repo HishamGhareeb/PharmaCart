@@ -16,7 +16,21 @@ import {
   resolveMappingUnit,
   type CatalogueRow,
 } from '../../../packages/db/src/mapping.ts';
-import type { MembershipRole, OrganisationKind, TenantContext } from '../../../packages/db/src/runtime.ts';
+import { MembershipAccessDeniedError, type MembershipRole, type OrganisationKind, type TenantContext } from '../../../packages/db/src/runtime.ts';
+import type { TenantScope } from '../src/request-auth.ts';
+import {
+  MAPPING_BIND_URL,
+  MAPPING_CANDIDATES_URL,
+  MAPPING_HEADERS,
+  MAPPING_IDS,
+  MAPPING_REFUSALS,
+  OPEN_NEED,
+  SELECTION,
+  VERIFIED_CATALOGUE,
+  mappingContext,
+  scriptedScope,
+  withMappingRoutes,
+} from './mapping-fixture.ts';
 
 const NEED_ID = '40000000-0000-4000-8000-000000000001';
 const PRODUCT_ID = '60000000-0000-4000-8000-000000000001';
@@ -308,5 +322,111 @@ test('only a pharmacy owner may bind a mapping while a purchaser may still read 
 
   assert.equal(refusal(() => { assertMappingReadAllowed(tenantContext('pharmacy_owner', 'supplier')); }).code, 'FORBIDDEN');
   assert.equal(refusal(() => { assertMappingWriteAllowed(tenantContext('pharmacy_owner', 'supplier')); }).code, 'FORBIDDEN');
+});
+
+// ---------------------------------------------------------------------------
+// Registered route behaviour through an injected tenant scope. No SQL runs: see mapping-fixture.ts.
+// ---------------------------------------------------------------------------
+
+const bindUrl = MAPPING_BIND_URL;
+const candidatesUrl = MAPPING_CANDIDATES_URL;
+
+test('the candidates route serves the repository view from inside the tenant scope', async () => {
+  for (const role of ['pharmacy_owner', 'purchaser'] as const) {
+    const { scope, statements } = scriptedScope({ need: OPEN_NEED, catalogue: VERIFIED_CATALOGUE }, mappingContext(role));
+    await withMappingRoutes(scope, async (app) => {
+      const response = await app.inject({ url: candidatesUrl, headers: MAPPING_HEADERS });
+      assert.equal(response.statusCode, 200, `${role}: ${response.body}`);
+      const view = response.json();
+      assert.equal(view.needId, MAPPING_IDS.need);
+      assert.equal(view.selectionRequired, true);
+      assert.equal(view.ambiguous, true);
+      assert.equal(view.unselectableExcluded, 1);
+      assert.deepEqual(view.candidates.map((candidate: { productId: string }) => candidate.productId), [MAPPING_IDS.product, MAPPING_IDS.otherProduct]);
+      assert.doesNotMatch(response.body, /price|currency|EGP|offer|supplier/i);
+    });
+    assert(statements.length > 0, 'the view must be read through the scoped client');
+  }
+});
+
+test('binding answers 201 for a new explicit decision and 200 for an idempotent repeat', async () => {
+  const created = scriptedScope({ need: OPEN_NEED, product: VERIFIED_CATALOGUE[0]!, catalogue: VERIFIED_CATALOGUE });
+  await withMappingRoutes(created.scope, async (app) => {
+    const response = await app.inject({ method: 'POST', url: bindUrl, headers: MAPPING_HEADERS, payload: SELECTION });
+    assert.equal(response.statusCode, 201, response.body);
+    const body = response.json();
+    assert.equal(body.needVersion, 2);
+    assert.equal(body.repeated, false);
+    assert.equal(body.unitBasis, 'explicit_supplied_unit');
+    assert.equal(body.productId, MAPPING_IDS.product);
+  });
+
+  const repeated = scriptedScope({
+    need: { ...OPEN_NEED, version: 2, sourceMapId: MAPPING_IDS.map },
+    product: VERIFIED_CATALOGUE[0]!,
+    existingDecision: { map_id: MAPPING_IDS.map, decision_id: MAPPING_IDS.decision, unit: 'box', unit_basis: 'explicit_supplied_unit' },
+  });
+  await withMappingRoutes(repeated.scope, async (app) => {
+    const response = await app.inject({ method: 'POST', url: bindUrl, headers: MAPPING_HEADERS, payload: { ...SELECTION, needVersion: 2 } });
+    assert.equal(response.statusCode, 200, response.body);
+    assert.deepEqual(response.json(), {
+      needId: MAPPING_IDS.need, needVersion: 2, mapId: MAPPING_IDS.map, productId: MAPPING_IDS.product, mapStatus: 'verified',
+      unit: 'box', unitBasis: 'explicit_supplied_unit', decisionId: MAPPING_IDS.decision, repeated: true,
+    });
+  });
+});
+
+const NOT_PERMITTED = 'The selected scope is not permitted.';
+
+test('every mapping refusal crosses the boundary as the fixed redacted envelope', async () => {
+  for (const refusal of MAPPING_REFUSALS) {
+    const { scope } = scriptedScope(refusal.world, refusal.tenant ?? mappingContext());
+    await withMappingRoutes(scope, async (app) => {
+      const response = await app.inject(refusal.write
+        ? { method: 'POST', url: bindUrl, headers: MAPPING_HEADERS, payload: refusal.payload ?? SELECTION }
+        : { url: candidatesUrl, headers: MAPPING_HEADERS });
+      assert.equal(response.statusCode, refusal.status, `${refusal.name}: ${response.body}`);
+      assert.deepEqual(response.json(), { error: { code: refusal.code, message: refusal.message, correlationId: response.headers['x-correlation-id'] } }, refusal.name);
+      assert.doesNotMatch(response.body, /SYN-C|SYN Brand|strip|box|tablet/, `${refusal.name} must not describe the resource`);
+    });
+  }
+});
+
+test('a denied membership and an unexpected failure are refused without detail', async () => {
+  const denied: TenantScope = () => Promise.reject(new MembershipAccessDeniedError());
+  await withMappingRoutes(denied, async (app) => {
+    for (const request of [
+      { url: candidatesUrl, headers: MAPPING_HEADERS },
+      { method: 'POST' as const, url: bindUrl, headers: MAPPING_HEADERS, payload: SELECTION },
+    ]) {
+      const response = await app.inject(request);
+      assert.equal(response.statusCode, 403, response.body);
+      assert.equal(response.json().error.message, NOT_PERMITTED);
+      assert.doesNotMatch(response.body, /membership|MEMBERSHIP_ACCESS_DENIED/i);
+    }
+  });
+  const { scope } = scriptedScope({ need: OPEN_NEED, failure: new Error('connection to database "pharmacart_test" failed: password authentication') });
+  await withMappingRoutes(scope, async (app) => {
+    const response = await app.inject({ url: candidatesUrl, headers: MAPPING_HEADERS });
+    assert.equal(response.statusCode, 500);
+    assert.equal(response.json().error.code, 'INTERNAL_ERROR');
+    assert.doesNotMatch(response.body, /password|pharmacart_test|stack/i);
+  });
+});
+
+test('a malformed path identifier is refused before a need is read', async () => {
+  const { scope, statements } = scriptedScope({ need: OPEN_NEED, catalogue: VERIFIED_CATALOGUE });
+  await withMappingRoutes(scope, async (app) => {
+    for (const request of [
+      { url: '/v1/needs/not-a-uuid/mapping-candidates', headers: MAPPING_HEADERS },
+      { method: 'POST' as const, url: '/v1/needs/not-a-uuid/mapping', headers: MAPPING_HEADERS, payload: SELECTION },
+    ]) {
+      const response = await app.inject(request);
+      assert.equal(response.statusCode, 400, response.body);
+      assert.equal(response.json().error.code, 'INVALID_REQUEST');
+      assert.doesNotMatch(response.body, /not-a-uuid/);
+    }
+  });
+  assert.deepEqual(statements, []);
 });
 

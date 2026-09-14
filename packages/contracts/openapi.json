@@ -198,7 +198,7 @@
               "supplier_administrator",
               "support"
             ],
-            "description": "Active membership role. Quoting and approval require pharmacy_owner or purchaser; receipts require pharmacy_owner or receiver."
+            "description": "Active membership role. Quoting and approval require pharmacy_owner or purchaser; receipts require pharmacy_owner or receiver. Need and order lists and mapping candidates require pharmacy_owner or purchaser; binding a mapping requires pharmacy_owner."
           },
           "membershipVersion": {
             "type": "integer",
@@ -717,6 +717,470 @@
           "id": {
             "type": "string",
             "format": "uuid"
+          }
+        }
+      },
+      "NeedPage": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "items",
+          "nextCursor"
+        ],
+        "description": "One keyset page of needs in the resolved branch. Row level security is the only tenant predicate.",
+        "properties": {
+          "items": {
+            "type": "array",
+            "maxItems": 100,
+            "items": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": [
+                "id",
+                "productRef",
+                "quantity",
+                "outstandingQuantity",
+                "status",
+                "version",
+                "mappingStatus",
+                "productId",
+                "saleUnit"
+              ],
+              "properties": {
+                "id": {
+                  "type": "string",
+                  "format": "uuid"
+                },
+                "productRef": {
+                  "type": "string",
+                  "minLength": 1,
+                  "description": "Source product reference carried from the inventory target."
+                },
+                "quantity": {
+                  "type": "string",
+                  "pattern": "^(?:0|[1-9][0-9]*)(?:\\.[0-9]+)?$",
+                  "description": "Stored requested_quantity as numeric text, identical to GET /v1/needs/{id}."
+                },
+                "outstandingQuantity": {
+                  "type": [
+                    "string",
+                    "null"
+                  ],
+                  "pattern": "^(?:0|[1-9][0-9]*)(?:\\.[0-9]+)?$",
+                  "description": "The stored quantity while open, '0' once covered or closed, and null for a status whose outstanding demand the schema does not record (quoted). Never a fabricated zero."
+                },
+                "status": {
+                  "enum": [
+                    "open",
+                    "quoted",
+                    "covered",
+                    "closed"
+                  ]
+                },
+                "version": {
+                  "type": "integer",
+                  "minimum": 1,
+                  "maximum": 9007199254740991,
+                  "description": "Need version, identical to GET /v1/needs/{id}."
+                },
+                "mappingStatus": {
+                  "enum": [
+                    "unmapped",
+                    "unverified",
+                    "verified"
+                  ],
+                  "description": "verified only when the tenant mapping and the catalogue product it names are both verified."
+                },
+                "productId": {
+                  "type": [
+                    "string",
+                    "null"
+                  ],
+                  "format": "uuid",
+                  "description": "Disclosed only for a verified mapping; null otherwise."
+                },
+                "saleUnit": {
+                  "type": [
+                    "string",
+                    "null"
+                  ],
+                  "minLength": 1,
+                  "maxLength": 64,
+                  "description": "Catalogue sale unit, disclosed only for a verified mapping and only when stored as a plain string; never derived or converted."
+                }
+              }
+            },
+            "description": "At most the requested limit, in ascending identifier order. No total or count is ever reported."
+          },
+          "nextCursor": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "minLength": 1,
+            "maxLength": 512,
+            "pattern": "^[A-Za-z0-9_-]+$",
+            "description": "Opaque continuation bound to the resolved organisation, branch, resource and status filter. Null on the last page. A cursor from any other scope is refused with 400 INVALID_CURSOR, indistinguishable from a malformed one."
+          }
+        }
+      },
+      "OrderPage": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "items",
+          "nextCursor"
+        ],
+        "description": "One keyset page of order intents in the resolved branch. No counterparty, quote or pricing is disclosed.",
+        "properties": {
+          "items": {
+            "type": "array",
+            "maxItems": 100,
+            "items": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": [
+                "id",
+                "state",
+                "version",
+                "externalClientRef",
+                "externalOrderId",
+                "lines",
+                "uncertainty"
+              ],
+              "properties": {
+                "id": {
+                  "type": "string",
+                  "format": "uuid"
+                },
+                "state": {
+                  "enum": [
+                    "queued",
+                    "submitting",
+                    "outcome_unknown",
+                    "acknowledged",
+                    "rejected",
+                    "human_review"
+                  ]
+                },
+                "version": {
+                  "type": "integer",
+                  "minimum": 1,
+                  "maximum": 9007199254740991,
+                  "description": "Intent version, identical to GET /v1/orders/{id}."
+                },
+                "externalClientRef": {
+                  "type": "string",
+                  "minLength": 1,
+                  "description": "Stable client reference, identical to GET /v1/orders/{id}."
+                },
+                "externalOrderId": {
+                  "type": [
+                    "string",
+                    "null"
+                  ],
+                  "minLength": 1,
+                  "description": "Supplier order identity. Null until an acknowledgement is recorded."
+                },
+                "lines": {
+                  "type": "object",
+                  "additionalProperties": false,
+                  "required": [
+                    "total",
+                    "settled",
+                    "awaitingReceipt"
+                  ],
+                  "description": "Line counts only. Quantities are never summed because lines may carry different sale units; per-line quantities stay on GET /v1/orders/{id}.",
+                  "properties": {
+                    "total": {
+                      "type": "integer",
+                      "minimum": 0,
+                      "maximum": 9007199254740991,
+                      "description": "Lines materialised for the intent; 0 while queued."
+                    },
+                    "settled": {
+                      "type": "integer",
+                      "minimum": 0,
+                      "maximum": 9007199254740991,
+                      "description": "Lines whose accepted plus rejected equals ordered and whose received equals accepted."
+                    },
+                    "awaitingReceipt": {
+                      "type": "integer",
+                      "minimum": 0,
+                      "maximum": 9007199254740991,
+                      "description": "Lines with received below shipped."
+                    }
+                  }
+                },
+                "uncertainty": {
+                  "oneOf": [
+                    {
+                      "type": "object",
+                      "additionalProperties": false,
+                      "required": [
+                        "safeToRetry",
+                        "nextAction"
+                      ],
+                      "properties": {
+                        "safeToRetry": {
+                          "const": false
+                        },
+                        "nextAction": {
+                          "const": "reconciliation_required"
+                        }
+                      }
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ],
+                  "description": "Present while the state is submitting, outcome_unknown or human_review, and null otherwise. An uncertain outcome is never reported as safe to retry."
+                }
+              }
+            },
+            "description": "At most the requested limit, in ascending identifier order. No total or count is ever reported."
+          },
+          "nextCursor": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "minLength": 1,
+            "maxLength": 512,
+            "pattern": "^[A-Za-z0-9_-]+$",
+            "description": "Opaque continuation bound to the resolved organisation, branch, resource and status filter. Null on the last page. A cursor from any other scope is refused with 400 INVALID_CURSOR, indistinguishable from a malformed one."
+          }
+        }
+      },
+      "MappingCandidates": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "needId",
+          "needVersion",
+          "needStatus",
+          "productRef",
+          "currentProductId",
+          "authoritativeUnit",
+          "unitBasis",
+          "selectionRequired",
+          "ambiguous",
+          "truncated",
+          "unselectableExcluded",
+          "candidates"
+        ],
+        "description": "Verified shared catalogue packs a person may choose for one need. It carries pack identity only: no offer, price or supplier, and no candidate is marked as chosen.",
+        "properties": {
+          "needId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "needVersion": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 9007199254740991,
+            "description": "Need version to send back as needVersion when binding."
+          },
+          "needStatus": {
+            "enum": [
+              "open",
+              "quoted",
+              "covered",
+              "closed"
+            ]
+          },
+          "productRef": {
+            "type": "string",
+            "minLength": 1,
+            "description": "Source product reference of the need."
+          },
+          "currentProductId": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "uuid",
+            "description": "Product of the current mapping, or null when the need is unmapped."
+          },
+          "authoritativeUnit": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "minLength": 1,
+            "description": "Unit stated by the connector target that produced the need, or null when none is recorded."
+          },
+          "unitBasis": {
+            "enum": [
+              "authoritative_metadata",
+              "explicit_supplied_unit_required"
+            ],
+            "description": "explicit_supplied_unit_required means a bind must state suppliedUnit equal to the chosen sale unit."
+          },
+          "selectionRequired": {
+            "const": true,
+            "description": "Always true: even a single eligible candidate is a human decision."
+          },
+          "ambiguous": {
+            "type": "boolean",
+            "description": "True when more than one candidate is eligible."
+          },
+          "truncated": {
+            "type": "boolean",
+            "description": "True when the catalogue window exceeded the candidate bound, so the list is not exhaustive."
+          },
+          "unselectableExcluded": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 21,
+            "description": "Rows in the fetched catalogue window withheld for an incomplete identity or a different unit."
+          },
+          "candidates": {
+            "type": "array",
+            "maxItems": 20,
+            "items": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": [
+                "productId",
+                "identity"
+              ],
+              "properties": {
+                "productId": {
+                  "type": "string",
+                  "format": "uuid"
+                },
+                "identity": {
+                  "type": "object",
+                  "additionalProperties": false,
+                  "required": [
+                    "brand",
+                    "manufacturer",
+                    "strength",
+                    "dosageForm",
+                    "packSize",
+                    "saleUnit"
+                  ],
+                  "description": "Complete verified catalogue pack identity. A pack missing any field is never offered.",
+                  "properties": {
+                    "brand": {
+                      "type": "string",
+                      "minLength": 1,
+                      "pattern": "^\\S(?:[\\s\\S]*\\S)?$",
+                      "description": "Brand name."
+                    },
+                    "manufacturer": {
+                      "type": "string",
+                      "minLength": 1,
+                      "pattern": "^\\S(?:[\\s\\S]*\\S)?$",
+                      "description": "Manufacturer."
+                    },
+                    "strength": {
+                      "type": "string",
+                      "minLength": 1,
+                      "pattern": "^\\S(?:[\\s\\S]*\\S)?$",
+                      "description": "Strength as recorded."
+                    },
+                    "dosageForm": {
+                      "type": "string",
+                      "minLength": 1,
+                      "pattern": "^\\S(?:[\\s\\S]*\\S)?$",
+                      "description": "Dosage form."
+                    },
+                    "packSize": {
+                      "type": "object",
+                      "additionalProperties": false,
+                      "required": [
+                        "value",
+                        "unit"
+                      ],
+                      "properties": {
+                        "value": {
+                          "type": "string",
+                          "maxLength": 32,
+                          "pattern": "^(?:0\\.[0-9]*[1-9]|[1-9][0-9]*(?:\\.[0-9]*[1-9])?)$",
+                          "description": "Positive canonical decimal string."
+                        },
+                        "unit": {
+                          "type": "string",
+                          "minLength": 1,
+                          "pattern": "^\\S(?:[\\s\\S]*\\S)?$",
+                          "description": "Unit of the pack size."
+                        }
+                      }
+                    },
+                    "saleUnit": {
+                      "type": "string",
+                      "minLength": 1,
+                      "pattern": "^\\S(?:[\\s\\S]*\\S)?$",
+                      "description": "Unit the pack is sold in; compared by exact equality, never converted."
+                    }
+                  }
+                }
+              }
+            },
+            "description": "Ascending product identifier order."
+          }
+        }
+      },
+      "MappingResult": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "needId",
+          "needVersion",
+          "mapId",
+          "productId",
+          "mapStatus",
+          "unit",
+          "unitBasis",
+          "decisionId",
+          "repeated"
+        ],
+        "description": "The recorded explicit human mapping decision. 201 records a new mapping and increments the need version, which invalidates quotes taken at the earlier version; 200 reports the same selection repeated at the current version, with nothing changed.",
+        "properties": {
+          "needId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "needVersion": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 9007199254740991,
+            "description": "Need version after the request."
+          },
+          "mapId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "productId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "mapStatus": {
+            "const": "verified"
+          },
+          "unit": {
+            "type": "string",
+            "minLength": 1,
+            "pattern": "^\\S(?:[\\s\\S]*\\S)?$",
+            "description": "Unit the decision is recorded against, equal to the catalogue sale unit."
+          },
+          "unitBasis": {
+            "enum": [
+              "authoritative_metadata",
+              "explicit_supplied_unit"
+            ],
+            "description": "Whether the unit came from connector metadata or from the suppliedUnit the request stated."
+          },
+          "decisionId": {
+            "type": "string",
+            "format": "uuid",
+            "description": "Provenance decision row. The repository returns one on both outcomes."
+          },
+          "repeated": {
+            "type": "boolean",
+            "description": "False with 201, true with 200."
           }
         }
       }
@@ -1279,6 +1743,241 @@
         }
       }
     },
+    "/v1/needs": {
+      "get": {
+        "operationId": "listNeeds",
+        "description": "Requires a pharmacy organisation and the role pharmacy_owner or purchaser; any other principal is refused with 403 FORBIDDEN, worded exactly as a denied membership. A malformed query is refused with 400 INVALID_REQUEST and an unusable cursor with 400 INVALID_CURSOR, the latter only after authentication.",
+        "parameters": [
+          {
+            "name": "X-Organisation-Id",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "X-Branch-Id",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "required": false,
+            "description": "Page size from 1 to 100 as a plain decimal string; 25 when omitted.",
+            "schema": {
+              "type": "string",
+              "pattern": "^(?:[1-9][0-9]?|100)$"
+            }
+          },
+          {
+            "name": "status",
+            "in": "query",
+            "required": false,
+            "description": "Exact need status filter. Any other value is refused with 400 INVALID_REQUEST.",
+            "schema": {
+              "enum": [
+                "open",
+                "quoted",
+                "covered",
+                "closed"
+              ]
+            }
+          },
+          {
+            "name": "cursor",
+            "in": "query",
+            "required": false,
+            "description": "nextCursor from the previous page of the same resource, scope and status filter.",
+            "schema": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 512,
+              "pattern": "^[A-Za-z0-9_-]+$"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "One page of needs inside the resolved scope",
+            "headers": {
+              "X-Correlation-Id": {
+                "required": true,
+                "schema": {
+                  "type": "string",
+                  "format": "uuid"
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/NeedPage"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Redacted error",
+            "headers": {
+              "X-Correlation-Id": {
+                "required": true,
+                "schema": {
+                  "type": "string",
+                  "format": "uuid"
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Redacted error",
+            "headers": {
+              "X-Correlation-Id": {
+                "required": true,
+                "schema": {
+                  "type": "string",
+                  "format": "uuid"
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Redacted error",
+            "headers": {
+              "X-Correlation-Id": {
+                "required": true,
+                "schema": {
+                  "type": "string",
+                  "format": "uuid"
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Redacted error",
+            "headers": {
+              "X-Correlation-Id": {
+                "required": true,
+                "schema": {
+                  "type": "string",
+                  "format": "uuid"
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Redacted error",
+            "headers": {
+              "X-Correlation-Id": {
+                "required": true,
+                "schema": {
+                  "type": "string",
+                  "format": "uuid"
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "413": {
+            "description": "Redacted error",
+            "headers": {
+              "X-Correlation-Id": {
+                "required": true,
+                "schema": {
+                  "type": "string",
+                  "format": "uuid"
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Redacted error",
+            "headers": {
+              "X-Correlation-Id": {
+                "required": true,
+                "schema": {
+                  "type": "string",
+                  "format": "uuid"
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Redacted error",
+            "headers": {
+              "X-Correlation-Id": {
+                "required": true,
+                "schema": {
+                  "type": "string",
+                  "format": "uuid"
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/v1/needs/{id}": {
       "get": {
         "operationId": "getNeed",
@@ -1327,6 +2026,476 @@
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/NeedView"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Redacted error",
+            "headers": {
+              "X-Correlation-Id": {
+                "required": true,
+                "schema": {
+                  "type": "string",
+                  "format": "uuid"
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Redacted error",
+            "headers": {
+              "X-Correlation-Id": {
+                "required": true,
+                "schema": {
+                  "type": "string",
+                  "format": "uuid"
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Redacted error",
+            "headers": {
+              "X-Correlation-Id": {
+                "required": true,
+                "schema": {
+                  "type": "string",
+                  "format": "uuid"
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Redacted error",
+            "headers": {
+              "X-Correlation-Id": {
+                "required": true,
+                "schema": {
+                  "type": "string",
+                  "format": "uuid"
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Redacted error",
+            "headers": {
+              "X-Correlation-Id": {
+                "required": true,
+                "schema": {
+                  "type": "string",
+                  "format": "uuid"
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "413": {
+            "description": "Redacted error",
+            "headers": {
+              "X-Correlation-Id": {
+                "required": true,
+                "schema": {
+                  "type": "string",
+                  "format": "uuid"
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Redacted error",
+            "headers": {
+              "X-Correlation-Id": {
+                "required": true,
+                "schema": {
+                  "type": "string",
+                  "format": "uuid"
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Redacted error",
+            "headers": {
+              "X-Correlation-Id": {
+                "required": true,
+                "schema": {
+                  "type": "string",
+                  "format": "uuid"
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/needs/{id}/mapping-candidates": {
+      "get": {
+        "operationId": "getMappingCandidates",
+        "description": "Requires a pharmacy organisation and the role pharmacy_owner or purchaser. A need outside the scope is refused with 404 NOT_FOUND, indistinguishable from a missing one; conflicting connector units are refused with 409 AMBIGUOUS_NEED_UNIT.",
+        "parameters": [
+          {
+            "name": "X-Organisation-Id",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "X-Branch-Id",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Selectable catalogue packs for the need",
+            "headers": {
+              "X-Correlation-Id": {
+                "required": true,
+                "schema": {
+                  "type": "string",
+                  "format": "uuid"
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MappingCandidates"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Redacted error",
+            "headers": {
+              "X-Correlation-Id": {
+                "required": true,
+                "schema": {
+                  "type": "string",
+                  "format": "uuid"
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Redacted error",
+            "headers": {
+              "X-Correlation-Id": {
+                "required": true,
+                "schema": {
+                  "type": "string",
+                  "format": "uuid"
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Redacted error",
+            "headers": {
+              "X-Correlation-Id": {
+                "required": true,
+                "schema": {
+                  "type": "string",
+                  "format": "uuid"
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Redacted error",
+            "headers": {
+              "X-Correlation-Id": {
+                "required": true,
+                "schema": {
+                  "type": "string",
+                  "format": "uuid"
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Redacted error",
+            "headers": {
+              "X-Correlation-Id": {
+                "required": true,
+                "schema": {
+                  "type": "string",
+                  "format": "uuid"
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "413": {
+            "description": "Redacted error",
+            "headers": {
+              "X-Correlation-Id": {
+                "required": true,
+                "schema": {
+                  "type": "string",
+                  "format": "uuid"
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Redacted error",
+            "headers": {
+              "X-Correlation-Id": {
+                "required": true,
+                "schema": {
+                  "type": "string",
+                  "format": "uuid"
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Redacted error",
+            "headers": {
+              "X-Correlation-Id": {
+                "required": true,
+                "schema": {
+                  "type": "string",
+                  "format": "uuid"
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/needs/{id}/mapping": {
+      "post": {
+        "operationId": "bindNeedMapping",
+        "description": "Requires a pharmacy organisation and the role pharmacy_owner only. Refusals: 404 NOT_FOUND; 409 NEED_VERSION_CONFLICT, NEED_NOT_OPEN, AMBIGUOUS_NEED_UNIT or MAPPING_DECISION_CONFLICT; 422 CATALOGUE_UNVERIFIED, CATALOGUE_IDENTITY_INCOMPLETE, SUPPLIED_UNIT_REQUIRED or UNIT_MISMATCH.",
+        "parameters": [
+          {
+            "name": "X-Organisation-Id",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "X-Branch-Id",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "additionalProperties": false,
+                "required": [
+                  "needVersion",
+                  "productId"
+                ],
+                "description": "One explicit human selection. Nothing is inferred, folded or converted.",
+                "properties": {
+                  "needVersion": {
+                    "type": "integer",
+                    "minimum": 1,
+                    "maximum": 2147483647,
+                    "description": "Need version the selection was made against; a different current version is refused with 409 NEED_VERSION_CONFLICT."
+                  },
+                  "productId": {
+                    "type": "string",
+                    "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$",
+                    "description": "Chosen verified catalogue pack."
+                  },
+                  "suppliedUnit": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 32,
+                    "description": "Required only when the need carries no authoritative unit metadata, and then equal to the chosen sale unit exactly."
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Same selection repeated at the current need version; nothing changed",
+            "headers": {
+              "X-Correlation-Id": {
+                "required": true,
+                "schema": {
+                  "type": "string",
+                  "format": "uuid"
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MappingResult"
+                }
+              }
+            }
+          },
+          "201": {
+            "description": "New explicit mapping decision recorded",
+            "headers": {
+              "X-Correlation-Id": {
+                "required": true,
+                "schema": {
+                  "type": "string",
+                  "format": "uuid"
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MappingResult"
                 }
               }
             }
@@ -2168,6 +3337,243 @@
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/ApprovalResult"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Redacted error",
+            "headers": {
+              "X-Correlation-Id": {
+                "required": true,
+                "schema": {
+                  "type": "string",
+                  "format": "uuid"
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Redacted error",
+            "headers": {
+              "X-Correlation-Id": {
+                "required": true,
+                "schema": {
+                  "type": "string",
+                  "format": "uuid"
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Redacted error",
+            "headers": {
+              "X-Correlation-Id": {
+                "required": true,
+                "schema": {
+                  "type": "string",
+                  "format": "uuid"
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Redacted error",
+            "headers": {
+              "X-Correlation-Id": {
+                "required": true,
+                "schema": {
+                  "type": "string",
+                  "format": "uuid"
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Redacted error",
+            "headers": {
+              "X-Correlation-Id": {
+                "required": true,
+                "schema": {
+                  "type": "string",
+                  "format": "uuid"
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "413": {
+            "description": "Redacted error",
+            "headers": {
+              "X-Correlation-Id": {
+                "required": true,
+                "schema": {
+                  "type": "string",
+                  "format": "uuid"
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Redacted error",
+            "headers": {
+              "X-Correlation-Id": {
+                "required": true,
+                "schema": {
+                  "type": "string",
+                  "format": "uuid"
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Redacted error",
+            "headers": {
+              "X-Correlation-Id": {
+                "required": true,
+                "schema": {
+                  "type": "string",
+                  "format": "uuid"
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/orders": {
+      "get": {
+        "operationId": "listOrders",
+        "description": "Requires a pharmacy organisation and the role pharmacy_owner or purchaser; any other principal is refused with 403 FORBIDDEN, worded exactly as a denied membership. A malformed query is refused with 400 INVALID_REQUEST and an unusable cursor with 400 INVALID_CURSOR, the latter only after authentication.",
+        "parameters": [
+          {
+            "name": "X-Organisation-Id",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "X-Branch-Id",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "required": false,
+            "description": "Page size from 1 to 100 as a plain decimal string; 25 when omitted.",
+            "schema": {
+              "type": "string",
+              "pattern": "^(?:[1-9][0-9]?|100)$"
+            }
+          },
+          {
+            "name": "status",
+            "in": "query",
+            "required": false,
+            "description": "Exact order intent status filter. Any other value is refused with 400 INVALID_REQUEST.",
+            "schema": {
+              "enum": [
+                "queued",
+                "submitting",
+                "outcome_unknown",
+                "acknowledged",
+                "rejected",
+                "human_review"
+              ]
+            }
+          },
+          {
+            "name": "cursor",
+            "in": "query",
+            "required": false,
+            "description": "nextCursor from the previous page of the same resource, scope and status filter.",
+            "schema": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 512,
+              "pattern": "^[A-Za-z0-9_-]+$"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "One page of order intents inside the resolved scope",
+            "headers": {
+              "X-Correlation-Id": {
+                "required": true,
+                "schema": {
+                  "type": "string",
+                  "format": "uuid"
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OrderPage"
                 }
               }
             }
