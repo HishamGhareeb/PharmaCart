@@ -1,9 +1,19 @@
 import { createHash, randomUUID } from 'node:crypto';
+import { compareCanonicalUuids, decideCanonicalUuid, readNeedHold, reconciliationRequiredCode, type IdentifierRefusalReason } from './need-reconciliation.ts';
 import type { RuntimeClient, TenantContext } from './runtime.ts';
 
+/** Names the identifier behind a refusal. Server-side only: the API forwards status and code, never detail. */
+export type ProcurementRefusalDetail=Readonly<{field:string;reason:IdentifierRefusalReason}>;
 export class ProcurementError extends Error {
-  readonly status: number; readonly code: string;
-  constructor(status:number,code:string) {super(code);this.status=status;this.code=code;}
+  readonly status: number; readonly code: string; readonly detail: ProcurementRefusalDetail|null;
+  constructor(status:number,code:string,detail:ProcurementRefusalDetail|null=null) {super(code);this.status=status;this.code=code;this.detail=detail;}
+}
+// PostgreSQL accepts upper case, braced and unhyphenated UUIDs as the same row, but they are different strings to the
+// duplicate check, the supplier grouping and the need lock order below. Only the canonical spelling passes, by name.
+function canonicalIdentifier(value:unknown,field:string,status:number,code:string):string {
+  const decision=decideCanonicalUuid(value);
+  if(decision.kind==='refused')throw new ProcurementError(status,code,{field,reason:decision.reason});
+  return decision.value;
 }
 export const canonical = (value:string) => value.includes('.') ? value.replace(/0+$/,'').replace(/\.$/,'') : value;
 export type QuoteCommand={branchId:string;lines:{needId:string;needVersion:number;quantity:string;unit:string}[];constraints:{supplierIds:string[];paymentTerm:'cash'}};
@@ -15,6 +25,8 @@ export async function createQuote(client:RuntimeClient,context:TenantContext,com
   canPurchase(context);
   if(command.branchId!==context.branchId)throw new ProcurementError(404,'NOT_FOUND');
   const lines:QuoteLine[]=[];let expiry=Date.now()+300000;
+  // Need identifiers are persisted into the quote, where reconciliation matches them and approval orders its locks by them.
+  command.lines.forEach((line,index)=>canonicalIdentifier(line.needId,`lines[${index}].needId`,422,'INVALID_IDENTIFIER'));
   if(new Set(command.lines.map(l=>l.needId)).size!==command.lines.length)throw new ProcurementError(422,'DUPLICATE_NEED');
   for(const line of command.lines) {
     // requested_quantity of an open need is its outstanding remainder, so the comparison stays exact numeric.
@@ -22,6 +34,10 @@ export async function createQuote(client:RuntimeClient,context:TenantContext,com
       m.id AS map_id,m.status AS map_status,m.version AS map_version,p.id AS product_id,p.identity,p.status AS product_status
       FROM need n LEFT JOIN source_product_map m ON m.id=n.source_map_id LEFT JOIN procurement_product p ON p.id=m.product_id WHERE n.id=$1`,[line.needId,line.quantity])).rows[0];
     if(!need)throw new ProcurementError(404,'NOT_FOUND');
+    // A need whose outstanding remainder was not proven at the last recalculation, or one an order of
+    // unknown quantity is attached to right now, has no number worth quoting. Refusing by name says the
+    // remainder must be reconciled, which NEED_CHANGED would not.
+    if(await readNeedHold(client,line.needId))throw new ProcurementError(409,reconciliationRequiredCode);
     if(need.status!=='open'||need.version!==line.needVersion)throw new ProcurementError(409,'NEED_CHANGED');
     if(need.map_status!=='verified'||need.product_status!=='verified')throw new ProcurementError(422,'MAPPING_UNVERIFIED');
     if(need.identity.saleUnit!==line.unit)throw new ProcurementError(422,'UNIT_MISMATCH');
@@ -43,6 +59,8 @@ export async function createQuote(client:RuntimeClient,context:TenantContext,com
 }
 export async function approveQuote(client:RuntimeClient,context:TenantContext,quoteId:string,quoteVersion:number,key:string) {
   canPurchase(context);
+  // Refused before the advisory lock: a second spelling of one quote would also hash to a second request.
+  canonicalIdentifier(quoteId,'quoteId',422,'INVALID_IDENTIFIER');
   const hash=createHash('sha256').update(JSON.stringify({quoteId,quoteVersion})).digest('hex');
   await client.query('SELECT pg_advisory_xact_lock(hashtextextended($1,0))',[`${context.organisationId}:approve:${key}`]);
   const replay=(await client.query("SELECT * FROM command_result WHERE organisation_id=$1 AND operation='approve_quote' AND key=$2",[context.organisationId,key])).rows[0];
@@ -57,7 +75,11 @@ export async function approveQuote(client:RuntimeClient,context:TenantContext,qu
   } else {
     if(!quote.fresh)throw new ProcurementError(409,'REQUOTE_REQUIRED');
     const lines=quote.lines as QuoteLine[];
-    const ordered=[...lines].sort((a,b)=>a.needId.localeCompare(b.needId));
+    // Stored identifiers reach a row lock, the lock order and the per-supplier grouping below. One written without
+    // createQuote's guard is not trusted to name the row it appears to, so nothing is locked and the quote must be re-made.
+    lines.forEach((line,index)=>{for(const field of ['needId','offerId','supplierId'] as const)canonicalIdentifier(line[field],`lines[${index}].${field}`,409,'REQUOTE_REQUIRED');});
+    // Primary key order, exactly as reconcileInventoryNeeds locks needs, so the two queue rather than deadlock.
+    const ordered=[...lines].sort((a,b)=>compareCanonicalUuids(a.needId,b.needId));
     for(const line of ordered) {
       // The need row is locked here and stays locked until commit, so the quantity read below is the one settled later.
       const current=(await client.query(`SELECT o.version AS offer_version,o.terms_version,r.terms_version AS relationship_terms,r.status AS relationship_status,o.expires_at>clock_timestamp() AS fresh,
@@ -68,6 +90,12 @@ export async function approveQuote(client:RuntimeClient,context:TenantContext,qu
         WHERE o.id=$1 FOR UPDATE OF n FOR SHARE OF o,r,m,p,org`,[line.offerId,line.quantity,line.needId])).rows[0];
       if(!current||!current.fresh||!current.available||!current.need_covers||current.offer_version!==line.offerVersion||current.terms_version!==line.termsVersion||current.relationship_terms!==line.termsVersion||current.relationship_status!=='active'
         ||current.need_version!==line.needVersion||current.need_status!=='open'||current.map_version!==line.mapVersion||current.map_status!=='verified'||current.product_status!=='verified'||current.verification_status!=='verified')throw new ProcurementError(409,'REQUOTE_REQUIRED');
+      // Read under the need lock taken above, and from current order state rather than the flag the last
+      // recalculation cached: a quote may have been raised while every order was sound and reached this
+      // point after one of them lost its outcome. Committing here would order against a remainder that
+      // nobody can state. An already approved quote never arrives here, so its recorded result and its
+      // snapshot are untouched.
+      if(await readNeedHold(client,line.needId))throw new ProcurementError(409,reconciliationRequiredCode);
     }
     const period=(await client.query("SELECT to_char(now() AT TIME ZONE 'UTC','YYYY-MM') AS period")).rows[0].period;
     const reserved=await client.query('UPDATE budget SET reserved_amount=reserved_amount+$4::numeric WHERE organisation_id=$1 AND branch_id=$2 AND period=$3 AND currency=$5 AND reserved_amount+spent_amount+$4::numeric<=limit_amount RETURNING period',[context.organisationId,context.branchId,period,quote.total,quote.currency]);
