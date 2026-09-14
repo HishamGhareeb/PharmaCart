@@ -38,8 +38,19 @@ Output is sorted by source code, so the same inputs always produce the same need
 
 AC-004 remains NOT RUN. The criterion requires a snapshot integration test that stages a completed snapshot, ingests one partition without completion, and asserts projection quantity and freshness through a real database. This package consumes a projection rather than producing one; it honours staleness, it does not compute it.
 
-Nothing reads `inventory_target` or writes `need`. The derivation is pure and takes its three inputs as arguments, so whatever calls it must load the targets, the projection and the open commitments from the same consistent snapshot. Reading them from three separate transactions would reintroduce the double-order bug this package exists to prevent.
+This package reads nothing from the database. The derivation is pure and takes its three inputs as arguments, so whatever calls it must load the targets, the projection and the open commitments from the same consistent snapshot. Reading them from three separate transactions would reintroduce the double-order bug this package exists to prevent.
 
 What counts as an open commitment is also left to the caller, and the definition matters more than it looks. An order submitted but not acknowledged, an order acknowledged but not delivered, and an order whose outcome is unknown are three different states, and only the last is genuinely ambiguous. Treating an unknown-outcome order as not committed will double-order; treating it as committed will under-order. The order path already models that state, and the caller must decide deliberately rather than by accident.
+
+## 5. The transactional counterpart
+
+`packages/db/src/need-reconciliation.ts` (`reconcileInventoryNeeds`) applies the same shortfall rule inside PostgreSQL, reading targets, projection and commitments in one statement. It is where the caller decisions above are made:
+
+- A queued order counts its quoted quantity; an acknowledged order counts accepted minus received; a rejected order counts nothing.
+- A submitting, outcome-unknown or human-review order is neither counted nor ignored. Its need is **held** with `unknown_order_state`, and quoting and approval refuse it with `409 RECONCILIATION_REQUIRED` until the order state is resolved. Every other need keeps moving.
+- A confirmed receipt holds its need with `receipt_inclusion_unproven` until a recorded, observed snapshot is proven to carry it. An applied writeback is not that proof. Nothing records inclusion yet, so today every receipt holds.
+- An order line or receipt line whose identifiers cannot be matched exactly to a need is never dropped. It holds the needs it could belong to.
+
+Every identifier that reaches its SQL or its row locks is refused by name unless it is a canonical, non-nil UUID. The two implementations are not yet proven equivalent, and inventory ingestion does not call the transactional one yet. See `docs/testing/need-reconciliation.md`.
 
 Finally, coverage targets are taken as given. Nothing here derives a target from consumption history, which is the obvious next thing and a place where a wrong model quietly costs money in both directions.
